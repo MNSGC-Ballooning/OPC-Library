@@ -1,0 +1,16 @@
+Commands
+
+All OPC
+ - .getTot() - returns total number of hits
+ - .getLogQuality() - returns the quality of the log
+ - .initOPC() - will initialize the OPC
+ - .logUpdate() - will return a data string
+ - .readData() - will read the data and return a bool indicating success
+ 
+Plantower
+- No additional commands
+
+SPS30
+- .powerOn() - used to start measurements (called by initOPC)
+- .powerOff() - used to end measurements
+- .clean() - used to clean the system (called by initOPC)
