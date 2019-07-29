@@ -299,9 +299,9 @@ for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){               //This w
    }
     dataLogLocal += String(a.ASF);                                      //This adds the average particle size to the end of the bin.
       
-   return dataLogLocal;
+   return nTot + ',' + dataLogLocal;
   } else {
-   return "-,-,-,-,-,-,-,-,-,-";                                        //If there is bad data, the string is populated with failure symbols.
+   return nTot + ',' + "-,-,-,-,-,-,-,-,-,-";                           //If there is bad data, the string is populated with failure symbols.
   badLog ++;
   if (badLog >= 5){														//Good log situation the same as in the Plantower code
     goodLog = false;

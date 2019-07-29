@@ -13,3 +13,6 @@ record new data every 2.3 seconds.
  
 The SPS 30 runs the read data function with the record data function, and
 can record new data every 1 seconds.
+
+The Plantower logs the number of hits, 03, 05, 10, 25, 50, 100.
+The SPS 30 logs the number of hits, Mass Concentrations PM1, PM2.5, PM4.0, PM10, Number Concentrations PM0.5, PM1, PM2.5, PM4.0, PM10, Average Particle size
