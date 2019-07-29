@@ -6,6 +6,7 @@ Written July 2019
 This is the definitions file for the OPC library.
 This will run any optical particle counters used for MURI.
 All particle counters will need to be run in loops of different speeds.
+Serial begin must be called separately.
 
 The PMS 5003 runs the read data function as fast as possible, and can
 record new data every 2.3 seconds.

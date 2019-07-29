@@ -6,6 +6,7 @@
 /*This is the definitions file for the OPC library.
 This will run any optical particle counters used for MURI.
 All particle counters will need to be run in loops of different speeds.
+Serial begin must be called separately.
 
 The PMS 5003 runs the read data function as fast as possible, and can
 record new data every 2.3 seconds.
@@ -13,45 +14,32 @@ record new data every 2.3 seconds.
 The SPS 30 runs the read data function with the record data function, and
 can record new data every 1 seconds. */
 
-#include "OPC.h"
+#include "OPCSensor.h"
 
 
 //OPC//
 
 
-OPC::OPC(){																//The OPC constructors all set up the serial and baud variables.
-	*s = Serial1;
-	baud = 9600;
-}
-
-OPC::OPC(Stream *h){
-	*s = *h;
-	baud = 9600;
-}
-
-OPC::OPC(Stream *h, int bd){
-	*s = *h;
-	baud = bd;
+OPC::OPC(Stream* ser){
+	s = ser;
 }
 
 int OPC::getTot(){ return nTot; }										//get the total number of data points
 
-int OPC::getLogQuality(){ return goodLog; }								//get the log quality
+bool OPC::getLogQuality(){ return goodLog; }							//get the log quality
 
-virtual void OPC::initOPC(){											//Initialize the serial and OPC variables
-	s->begin(baud);
-	delay(100);
+void OPC::initOPC(){													//Initialize the serial and OPC variables
 	goodLog = false;
 	badLog = 0;
-	nTot = 1;
+	nTot = 1;	
 }
 
-virtual String logUpdate(){												//Placeholders: will always be redefined
+String OPC::logUpdate(){												//Placeholders: will always be redefined
 	String localDataLog = "OPC not specified!";
 	return localDataLog;
 }
 
-virtual bool readData(){
+bool OPC::readData(){
 	bool badRead = false;
 	return badRead;
 }
@@ -60,18 +48,19 @@ virtual bool readData(){
 //PLANTOWER//
 
 
-Plantower::Plantower() : OPC() {}
+Plantower::Plantower(Stream* ser, unsigned int planLog) : OPC(ser) {
+		logRate = planLog;
+		goodLogAge = 0;
+	}
 
-Plantower::Plantower(Stream *h) : OPC(&h) {}
-
-Plantower::Plantower(Stream *h, int bd) : OPC(&h, bd) {}
-
-virtual String logUpdate(){
-	String localDataLog = "";
-																		//Log sample number, in flight time
-    localDataLog += nTot;
+String Plantower::logUpdate(){
+	String localDataLog = "";															
+    localDataLog += nTot;												//Log sample number, in flight time
     localDataLog += ",";  
-	if (readData()) {
+    
+    if ((millis()-goodLogAge)>=logRate) goodLog = false;
+    
+    if (goodLog) {
     localDataLog += PMSdata.particles_03um;                             //If data is in the buffer, log it
     localDataLog += ",";
     localDataLog += PMSdata.particles_05um;
@@ -83,22 +72,19 @@ virtual String logUpdate(){
     localDataLog += PMSdata.particles_50um;
     localDataLog += ",";
     localDataLog += PMSdata.particles_100um;
- 
-    nTot += 1;                                                   	    //Total samples
-    goodLog = true;                                                     //If data is successfully collected, note the state;
-    badLog = 0;
 
-  } else {
-    badLog++;                                                           //If there are five consecutive bad logs, not the state;
-    if (badLog >= 5){
-      goodLog = false;
-      localDataLog += '%' + ',' + 'Q' + ',' + '=' + ',' + '!' + ',' + '@' + ',' + '$';
-    }
-  }
+    nTot += 1;                                                   	    //Total samples
+	
+	} else {
+		badLog++;                                                       //If there are five consecutive bad logs, not the state;
+		if (badLog >= 5){
+		localDataLog += '%' + ',' + 'Q' + ',' + '=' + ',' + '!' + ',' + '@' + ',' + '$';
+		}
+	}
   return localDataLog;
 }
 
-virtual bool readData(){
+bool Plantower::readData(){
 	  if (! s->available()) {
     return false;
   }
@@ -128,11 +114,13 @@ virtual bool readData(){
  
   memcpy((void *)&PMSdata, (void *)buffer_u16, 30);						 //Put it into a nice struct :)
  
-  if (sum != PMSAdata.checksum) {
-    Serial.println("Checksum failure");
+  if (sum != PMSdata.checksum) {
     return false;
   }
 
+	goodLog = true;
+	goodLogAge = millis();
+	badLog = 0;
   return true;
 }
 
@@ -140,13 +128,9 @@ virtual bool readData(){
 //SPS//
 
 
-SPS::SPS() : OPC() {}
+SPS::SPS(Stream* ser) : OPC(ser) {}
 
-SPS::SPS(Stream *h) : OPC(&h) {}
-
-SPS::SPS(Stream *h, int bd) : OPC(&h, bd) {}
-
-void SPS::powerOn()                                                     //SPS Power on command. This sends and recieves the power on frame
+void SPS::powerOn()                                			            //SPS Power on command. This sends and recieves the power on frame
 {
   s->write(0x7E);                                                       //Send startup frame
   s->write((byte)0x00);
@@ -162,7 +146,7 @@ void SPS::powerOn()                                                     //SPS Po
   data = 0;
 }
 
-void SPS::powerOff()                                                    //SPS Power off command. This sends and recieves the power off frame
+void SPS::powerOff()                              		                //SPS Power off command. This sends and recieves the power off frame
 {
   s->write(0x7E);                                                       //Send shutdown frame
   s->write((byte)0x00);
@@ -176,7 +160,7 @@ void SPS::powerOff()                                                    //SPS Po
   data = 0;
 }
 
-void SPS::clean()                                                       //SPS Power off command. This sends and recieves the power off frame
+void SPS::clean()                                		                //SPS Power off command. This sends and recieves the power off frame
 {
   s->write(0x7E);                                                       //Send clean frame
   s->write((byte)0x00);
@@ -190,21 +174,19 @@ void SPS::clean()                                                       //SPS Po
   data = 0;
 }
 
-virtual void SPS::initOPC()                                             //SPS initialization code. Requires input of SPS serial stream.
+void SPS::initOPC()                            			  		        //SPS initialization code. Requires input of SPS serial stream.
 {
- 	s->begin(baud);
-	delay(100);
 	goodLog = false;
 	badLog = 0;
 	nTot = 1;
 	
-    SPS_power_on(s);                                                    //Sends SPS active measurement command
+    powerOn();                                       	                //Sends SPS active measurement command
     delay(100);
-    SPS_fanClean(s);                                                    //Sends fan clean command. This takes 10 seconds. Then, an additional 10 seconds
+    clean();                                              		        //Sends fan clean command. This takes 10 seconds. Then, an additional 10 seconds
     delay(20500);                                                       //are taken to get a clean, consistent flow through the system.
 }
 
-virtual bool SPS::readData(){                                           //SPS data request. The system will pull data and ensure the accuracy.                                                                   
+bool SPS::readData(){                                     		      	//SPS data request. The system will pull data and ensure the accuracy.                                                                   
   s->write(0x7E);                                                       //The read data function will return true if the data request is successful.
   s->write((byte)0x00);
   s->write(0x03);                                                       //This is the actual command
@@ -229,10 +211,8 @@ virtual bool SPS::readData(){                                           //SPS da
     for(unsigned short j = 0; j<5; j++){                                //This will populate the system information array with the data returned by the                  
         systemInfo[j] = s->read();                                      //by the system about the request. This is not the actual data, but will provide
         if (j != 0) checksum += systemInfo[j];                          //information about the data. The information is also added to the checksum.
-        Serial.print(systemInfo[j], HEX);
-        Serial.print("     ");
     }
-    Serial.println();
+
    
    if (systemInfo[3] != (byte)0x00){                                    //If the system indicates a malfunction of any kind, the data request will fail.
      for (unsigned short j = 0; j<60; j++) data = s->read();            //Any data that populates the main array will be thrown out to prevent future corruption.
@@ -262,12 +242,8 @@ byte stuffByte = 0;
        return false;
     }
 
-   Serial.println (SPSChecksum,HEX);
-   Serial.println(data,HEX);
-
     checksum = checksum & 0xFF;                                         //The local checksum is calculated here. The LSB is taken by the first line.
     checksum = ~checksum;                                               //The bit is inverted by the second line.
-    Serial.println(checksum,HEX);
 
     if (checksum != SPSChecksum){                                       //If the checksums are not equal, the data request will fail.  
       for (unsigned short j = 0; j<60; j++) data = s->read();           //Just to be certain, any remaining data is thrown out to prevent corruption.
@@ -286,7 +262,7 @@ byte stuffByte = 0;
   return true;                                                          //If the reading is successful, the function will return true.
 }
 
-virtual String SPS::updateLog(){                                        //This function will parse the data and form loggable strings.
+String SPS::logUpdate(){                          				        //This function will parse the data and form loggable strings.
     String dataLogLocal = "";   
     if (readData()){                                                    //Read the data and determine the read success.
        goodLog = true;                                                  //The data is sent in reverse. This will flip the order of every four bytes

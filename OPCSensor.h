@@ -6,6 +6,7 @@
 /*This is the header file for the OPC library.
 This will run any optical particle counters used for MURI.
 All particle counters will need to be run in loops of different speeds.
+Serial begin must be called separately.
 
 The PMS 5003 runs the read data function as fast as possible, and can
 record new data every 2.3 seconds.
@@ -14,10 +15,11 @@ The SPS 30 runs the read data function with the record data function, and
 can record new data every 1 seconds. */
 
 
-#ifndef Sensors_h
-#define Sensors_h
+#ifndef OPCSensor_h
+#define OPCSensor_h
 
 #include <arduino.h>
+#include <Stream.h>
 
 class OPC																//Parent OPC class
 {
@@ -25,21 +27,18 @@ class OPC																//Parent OPC class
 	bool goodLog;														//Values for log tracking
 	int badLog;
 	int nTot;
-	unsigned short baud;															//Baud Rate
-	Stream *s;															//Serial Input
+	Stream *s;
 	
 	public:
-	OPC();																//Parent Constructors
-	OPC(Stream *h);
-	OPC(Stream *h, int bd);
+	OPC(Stream* ser);													//Parent Constructor
 	int getTot();														//Parent quality checks
 	bool getLogQuality();
-	virtual void initOPC();												//Virtual initializations for three key functions
-	virtual String logUpdate();											
-	virtual bool readData();
+	void initOPC();														//Initializations for three key functions
+	String logUpdate();											
+	bool readData();
 };
 
-class Plantower: protected OPC
+class Plantower: public OPC
 {                              
 	private:
 	struct PMS5003data {												//Struct that holds Plantower data
@@ -50,16 +49,16 @@ class Plantower: protected OPC
 		uint16_t unused;
 		uint16_t checksum;
 	} PMSdata;
+	unsigned long goodLogAge;
+	unsigned int logRate;
 	
 	public:
-	Plantower();														//Plantower constructors
-	Plantower(Stream *h);
-	Plantower(Stream *h, int bd);
-	virtual String logUpdate();											//Overrides of OPC data functions
-	virtual bool readData();
+	Plantower(Stream* ser, unsigned int planLog);						//Plantower constructor
+	String logUpdate();													//Overrides of OPC data functions
+	bool readData();
 };
 
-class SPS: protected OPC
+class SPS: public OPC
 {
 	private:
 	byte buffers[40] = {0}, systemInfo [5] = {0}, MassC[16] = {0};      //Byte variables for collection and organization of data from the SPS30.
@@ -84,15 +83,13 @@ class SPS: protected OPC
 	}a;
 
 	public:
-	SPS();																//SPS constructors
-	SPS(Stream *h);
-	SPS(Stream *h, int bd);
-	void powerOn();														
+	SPS(Stream* ser);													//Parent Constructor
+	void powerOn();														//Special commands for SPS
 	void powerOff();
 	void clean();
-	virtual void initOPC();
-	virtual String logUpdate();
-	virtual bool readData();
+	void initOPC();														//Overrides of OPC data functions and initialization
+	String logUpdate();
+	bool readData();
 };
 
 #endif

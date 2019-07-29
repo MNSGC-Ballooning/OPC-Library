@@ -1,6 +1,7 @@
 Commands
 
 All OPC
+ - initialize with a reference to the serial port name, separately begin the serial connection.
  - .getTot() - returns total number of hits
  - .getLogQuality() - returns the quality of the log
  - .initOPC() - will initialize the OPC
@@ -8,7 +9,7 @@ All OPC
  - .readData() - will read the data and return a bool indicating success
  
 Plantower
-- No additional commands
+- add an additional log rate in milliseconds as a second parameter to the initialization
 
 SPS30
 - .powerOn() - used to start measurements (called by initOPC)
