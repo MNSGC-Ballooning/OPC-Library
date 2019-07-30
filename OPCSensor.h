@@ -24,18 +24,21 @@ can record new data every 1 seconds. */
 class OPC																//Parent OPC class
 {
 	protected:
-	bool goodLog;														//Values for log tracking
-	int badLog;
-	int nTot;
-	Stream *s;
+	bool goodLog;														//Describe a state of successful or unsuccessful data intakes
+	int badLog;															//Number of bad hits in a row
+	int nTot;															//Number of good hits, culminative
+	Stream *s;															//Declares data IO stream
+	unsigned long goodLogAge;											//Age of the last good set of data
+	unsigned long resetTime;											//Age the last good log must reach to trigger a reset
 	
 	public:
 	OPC(Stream* ser);													//Parent Constructor
 	int getTot();														//Parent quality checks
-	bool getLogQuality();
-	void initOPC();														//Initializations for three key functions
-	String logUpdate();											
+	bool getLogQuality();												//get the quality of the log
+	void initOPC();														//Initialization
+	String logUpdate();													//Placeholders
 	bool readData();
+	void setReset(unsigned long resetTimer);							//Manually set the bad log reset timer
 };
 
 class Plantower: public OPC
@@ -49,7 +52,6 @@ class Plantower: public OPC
 		uint16_t unused;
 		uint16_t checksum;
 	} PMSdata;
-	unsigned long goodLogAge;
 	unsigned int logRate;
 	
 	public:

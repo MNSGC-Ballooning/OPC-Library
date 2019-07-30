@@ -19,7 +19,7 @@ can record new data every 1 seconds. */
 //OPC//
 
 
-OPC::OPC(Stream* ser){
+OPC::OPC(Stream* ser){													//Establishes data IO stream
 	s = ser;
 }
 
@@ -28,9 +28,11 @@ int OPC::getTot(){ return nTot; }										//get the total number of data points
 bool OPC::getLogQuality(){ return goodLog; }							//get the log quality
 
 void OPC::initOPC(){													//Initialize the serial and OPC variables
-	goodLog = false;
-	badLog = 0;
-	nTot = 1;	
+	goodLog = false;													//Describe a state of successful or unsuccessful data intakes
+	goodLogAge = 0;														//Age of the last good set of data
+	badLog = 0;															//Number of bad hits in a row
+	nTot = 1;															//Number of good hits, culminative
+	resetTime = 1200000;												//autotrigger forced reset timer
 }
 
 String OPC::logUpdate(){												//Placeholders: will always be redefined
@@ -39,17 +41,18 @@ String OPC::logUpdate(){												//Placeholders: will always be redefined
 }
 
 bool OPC::readData(){
-	bool badRead = false;
-	return badRead;
+	bool greatRead = false;
+	return greatRead;
 }
+
+void OPC::setReset(unsigned long resetTimer){ resetTime = resetTimer; } //Manually set the length of the forced reset
 
 
 //PLANTOWER//
 
 
-Plantower::Plantower(Stream* ser, unsigned int planLog) : OPC(ser) {
+Plantower::Plantower(Stream* ser, unsigned int planLog) : OPC(ser) {	//Plantower constructor- contains the log rate and the plantower stream
 		logRate = planLog;
-		goodLogAge = 0;
 	}
 
 String Plantower::logUpdate(){
@@ -57,7 +60,7 @@ String Plantower::logUpdate(){
     localDataLog += nTot;												//Log sample number, in flight time
     localDataLog += ",";  
     
-    if ((millis()-goodLogAge)>=logRate) goodLog = false;
+    if ((millis()-goodLogAge)>=logRate) goodLog = false;				//IF no good data is collected during a log, the log is bad. Explicit because of importance
     
     if (goodLog) {
     localDataLog += PMSdata.particles_03um;                             //If data is in the buffer, log it
@@ -75,15 +78,20 @@ String Plantower::logUpdate(){
     nTot += 1;                                                   	    //Total samples
 	
 	} else {
-		badLog++;                                                       //If there are five consecutive bad logs, not the state;
+		localDataLog += "-,-,-,-,-,-";
+		badLog++;                                                       //If there are five consecutive bad logs, the data string will print a warning
 		if (badLog >= 5){
 		localDataLog += '%' + ',' + 'Q' + ',' + '=' + ',' + '!' + ',' + '@' + ',' + '$';
+		}
+		if ((millis()-goodLogAge)>=resetTime){							//For the plantower, a reset is just a long delay and a hope
+			delay(20000);
+			goodLogAge = millis();
 		}
 	}
   return localDataLog;
 }
 
-bool Plantower::readData(){
+bool Plantower::readData(){												//Command that calls bytes from the plantower
 	  if (! s->available()) {
     return false;
   }
@@ -105,21 +113,21 @@ bool Plantower::readData(){
     sum += buffer[i];
   }
 
-  uint16_t buffer_u16[15];
-  for (uint8_t i=0; i<15; i++) {
+  uint16_t buffer_u16[15];												//Making bins exclusive for each particulate size
+  for (uint8_t i=0; i<15; i++) {										
     buffer_u16[i] = buffer[2 + i*2 + 1];
     buffer_u16[i] += (buffer[2 + i*2] << 8);
   }
  
-  memcpy((void *)&PMSdata, (void *)buffer_u16, 30);						 //Put it into a nice struct :)
+  memcpy((void *)&PMSdata, (void *)buffer_u16, 30);						//Put it into a nice struct :)
  
   if (sum != PMSdata.checksum) {
     return false;
   }
 
-	goodLog = true;
+	goodLog = true;														//goodLog is set to true of every good log
 	goodLogAge = millis();
-	badLog = 0;
+	badLog = 0;															//The badLog counter and the goodLogAge are both reset.
   return true;
 }
 
@@ -175,9 +183,11 @@ void SPS::clean()                                		                //SPS Power o
 
 void SPS::initOPC()                            			  		        //SPS initialization code. Requires input of SPS serial stream.
 {
-	goodLog = false;
+	goodLog = false;													//The same code that initializes the OPC, too lazy to remember the syntax to call
+	goodLogAge = 0;														//the parent function.
 	badLog = 0;
 	nTot = 1;
+	resetTime = 1200000;
 	
     powerOn();                                       	                //Sends SPS active measurement command
     delay(100);
@@ -265,15 +275,16 @@ String SPS::logUpdate(){                          				        //This function wi
     String dataLogLocal = nTot;   
     if (readData()){                                                    //Read the data and determine the read success.
        goodLog = true;                                                  //The data is sent in reverse. This will flip the order of every four bytes
+       goodLogAge = millis();
        badLog = 0;
        nTot++;
        
-unsigned short flip = 0;                                                //Index of array to flip
+unsigned short flip = 0;                                                //Index of array to flip- I KNOW THIS IS REDUNDANT FOR THE FLIP IN THE FOR LOOP. However, I want flip to continue to increase.
 unsigned short result = 0;                                              //Index of array that will be the result
 
 for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){               //This will loop through the main flipping mechanism
   result = flipMax - 1;                                                 //The result starts one lower than the flipMax because of counting from zero
-    for (flip; flip<flipMax; flip++){                                   //Flipping mechanism. This flips the results of the data request.
+    for (flip; flip<flipMax; flip++){                                   //Flipping mechanism. This flips the results of the data request. IGNORE THIS WARNING.
       if (flipMax < 5)  a.ASA[flip] = AvgS[result];                     //Flips average size. Average size only has four bytes.
       if (flipMax < 17) m.MCA[flip] = MassC[result];                    //Flips mass. Mass has four less bytes than number.
        n.NCA[flip] = NumC[result];                                      //Flips number count.
@@ -302,6 +313,15 @@ for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){               //This w
 	 badLog ++;
 	 if (badLog >= 5) goodLog = false;									//Good log situation the same as in the Plantower code
 	 dataLogLocal += ",-,-,-,-,-,-,-,-,-,-";							//If there is bad data, the string is populated with failure symbols.              
+	 if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
+		 powerOff();													//the system will cycle and clean the dust bin.
+		 delay (2000);
+		 powerOn();
+		 delay (100);
+		 clean();
+		 delay(20500);
+		 goodLogAge = millis();
+	 }
 	}
 	return dataLogLocal;
   }

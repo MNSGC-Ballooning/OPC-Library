@@ -7,9 +7,10 @@ All OPC
  - .initOPC() - will initialize the OPC
  - .logUpdate() - will return a data string
  - .readData() - will read the data and return a bool indicating success
+ - .setReset(int) - will manually set the automatic reset timer in the case of consistent bad logs. The default is 20 minutes of constantly poor logging. This will cause a 21 second delay in the code operation.
  
 Plantower
-- add an additional log rate in milliseconds as a second parameter to the initialization
+- add an additional log rate in milliseconds as a second parameter to the constructor
 
 SPS30
 - .powerOn() - used to start measurements (called by initOPC)
