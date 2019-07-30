@@ -263,7 +263,7 @@ byte stuffByte = 0;
 }
 
 String SPS::logUpdate(){                          				        //This function will parse the data and form loggable strings.
-    String dataLogLocal = "";   
+    String dataLogLocal = nTot + ',';   
     if (readData()){                                                    //Read the data and determine the read success.
        goodLog = true;                                                  //The data is sent in reverse. This will flip the order of every four bytes
        badLog = 0;
@@ -298,12 +298,12 @@ for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){               //This w
       }
    }
     dataLogLocal += String(a.ASF);                                      //This adds the average particle size to the end of the bin.
-      
-   return nTot + ',' + dataLogLocal;
+    
   } else {
 	 badLog ++;
 	 if (badLog >= 5) goodLog = false;									//Good log situation the same as in the Plantower code
-   return nTot + ',' + "-,-,-,-,-,-,-,-,-,-";                           //If there is bad data, the string is populated with failure symbols.
+	 dataLogLocal += "-,-,-,-,-,-,-,-,-,-"								//If there is bad data, the string is populated with failure symbols.              
 	}
+	return dataLogLocal;
   }
 
