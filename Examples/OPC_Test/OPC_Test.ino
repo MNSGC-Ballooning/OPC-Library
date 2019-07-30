@@ -1,7 +1,7 @@
 #include <OPCSensor.h>
 
-#define PMS_SERIAL Serial2
-#define SPS_SERIAL Serial1
+#define PMS_SERIAL Serial1
+#define SPS_SERIAL Serial5
 
 Plantower PlanA(&PMS_SERIAL, 7000);
 SPS SpsA(&SPS_SERIAL);
@@ -13,8 +13,10 @@ void setup() {
 Serial.begin(115200);
 PMS_SERIAL.begin(9600);
 SPS_SERIAL.begin(115200);
+while (!Serial5) Serial.println("Waiting...");
 PlanA.initOPC();
 SpsA.initOPC();
+Serial.println("System initialized!");
 }
 
 void loop() {

@@ -301,10 +301,9 @@ for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){               //This w
       
    return nTot + ',' + dataLogLocal;
   } else {
+	 badLog ++;
+	 if (badLog >= 5) goodLog = false;									//Good log situation the same as in the Plantower code
    return nTot + ',' + "-,-,-,-,-,-,-,-,-,-";                           //If there is bad data, the string is populated with failure symbols.
-  badLog ++;
-  if (badLog >= 5){														//Good log situation the same as in the Plantower code
-    goodLog = false;
-  }
+	}
   }
 }
