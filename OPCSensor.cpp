@@ -306,4 +306,4 @@ for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){               //This w
    return nTot + ',' + "-,-,-,-,-,-,-,-,-,-";                           //If there is bad data, the string is populated with failure symbols.
 	}
   }
-}
+
