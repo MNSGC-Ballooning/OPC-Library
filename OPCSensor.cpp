@@ -262,7 +262,7 @@ byte stuffByte = 0;
 }
 
 String SPS::logUpdate(){                          				        //This function will parse the data and form loggable strings.
-    String dataLogLocal = nTot + ',';   
+    String dataLogLocal = nTot;   
     if (readData()){                                                    //Read the data and determine the read success.
        goodLog = true;                                                  //The data is sent in reverse. This will flip the order of every four bytes
        badLog = 0;
@@ -283,7 +283,7 @@ for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){               //This w
 
    for(unsigned short k = 0; k<4; k++){                                 //This loop will populate the data string with mass concentrations.
       if (k==0) {
-         dataLogLocal += String(m.MCF[k]) + ',';                        //Each bin from the sensor includes all of the particles from the bin
+         dataLogLocal += ',' + String(m.MCF[k]) + ',';                  //Each bin from the sensor includes all of the particles from the bin
         } else {                                                        //below it. This will show the number of particles that reside invidually
          dataLogLocal += String(m.MCF[k]-m.MCF[k-1]) + ',';             //in each of the four bins.
         }
@@ -301,7 +301,7 @@ for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){               //This w
   } else {
 	 badLog ++;
 	 if (badLog >= 5) goodLog = false;									//Good log situation the same as in the Plantower code
-	 dataLogLocal += "-,-,-,-,-,-,-,-,-,-";								//If there is bad data, the string is populated with failure symbols.              
+	 dataLogLocal += ",-,-,-,-,-,-,-,-,-,-";							//If there is bad data, the string is populated with failure symbols.              
 	}
 	return dataLogLocal;
   }
