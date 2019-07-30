@@ -16,7 +16,6 @@ can record new data every 1 seconds. */
 
 #include "OPCSensor.h"
 
-
 //OPC//
 
 
@@ -302,7 +301,7 @@ for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){               //This w
   } else {
 	 badLog ++;
 	 if (badLog >= 5) goodLog = false;									//Good log situation the same as in the Plantower code
-	 dataLogLocal += "-,-,-,-,-,-,-,-,-,-"								//If there is bad data, the string is populated with failure symbols.              
+	 dataLogLocal += "-,-,-,-,-,-,-,-,-,-";								//If there is bad data, the string is populated with failure symbols.              
 	}
 	return dataLogLocal;
   }
