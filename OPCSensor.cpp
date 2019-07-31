@@ -11,13 +11,17 @@ Serial begin must be called separately.
 The PMS 5003 runs the read data function as fast as possible, and can
 record new data every 2.3 seconds.
  
-The SPS 30 runs the read data function with the record data function, and
-can record new data every 1 seconds. */
+The SPS 30 runs the read data function with the log update function, and
+can record new data every 1 seconds.
+
+The Alphasense R1 runs the read data function with the log update function,
+and can record new data every 1 seconds. The R1 runs on SPI.*/
 
 #include "OPCSensor.h"
 
 //OPC//
 
+OPC::OPC(){}
 
 OPC::OPC(Stream* ser){													//Establishes data IO stream
 	s = ser;
@@ -203,9 +207,7 @@ bool SPS::readData(){                                     		      	//SPS data re
   s->write(0xFC);
   s->write(0x7E);
 
- if (! s->available()){                                                 //If the given serial connection is not available, the data request will fail.
-    return false;
-  }
+ if (! s->available()) return false;                                    //If the given serial connection is not available, the data request will fail.
 
    if (s->peek() != 0x7E){                                              //If the sent start byte is not as expected, the data request will fail.
      for (unsigned short j = 0; j<60; j++) data = s->read();            //The data buffer will be wiped to ensure the next data pull isn't corrupt.
@@ -274,11 +276,11 @@ byte stuffByte = 0;
 String SPS::logUpdate(){                          				        //This function will parse the data and form loggable strings.
     String dataLogLocal = nTot;   
     if (readData()){                                                    //Read the data and determine the read success.
-       goodLog = true;                                                  //The data is sent in reverse. This will flip the order of every four bytes
+       goodLog = true;                                                  //This will establish the good log inidicators.
        goodLogAge = millis();
        badLog = 0;
        nTot++;
-       
+																		//The data is sent in reverse. This will flip the order of every four bytes
 unsigned short flip = 0;                                                //Index of array to flip- I KNOW THIS IS REDUNDANT FOR THE FLIP IN THE FOR LOOP. However, I want flip to continue to increase.
 unsigned short result = 0;                                              //Index of array that will be the result
 
@@ -325,4 +327,143 @@ for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){               //This w
 	}
 	return dataLogLocal;
   }
+
+
+//R1//
+
+
+
+R1::R1(uint8_t slave) : OPC() { SSpin = slave; }
+
+void R1::initOPC(){
+	goodLog = false;													//The same code that initializes the OPC, too lazy to remember the syntax to call
+	goodLogAge = 0;														//the parent function.
+	badLog = 0;
+	nTot = 1;
+	resetTime = 1200000;
+
+	SPI.begin();        											 	//Intialize SPI in Arduino
+	delay(5000);
+	powerOn();
+	delay(5000); 														//Delay to allow fans to reach operating speed
+}
+
+void R1::powerOn(){
+	byte inData[3] = {0};
+
+	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));  
+	digitalWrite(SSpin, LOW);                                           
+  
+	inData[0] = SPI.transfer(0x03);                               
+	delay(10);                                                          
+	inData[1] = SPI.transfer(0x03);                               
+	delay(10);
+	inData[2] = SPI.transfer(0x03);
+	delay(10);
+	digitalWrite(SSpin, HIGH);                                          
+	SPI.endTransaction();
+
+	if(inData[0] != 0x31 || inData[1] != 0xF3 || inData[2] != 0x03)
+	{
+		delay(5000);
+		powerOn();
+	}
+}
+
+void R1::powerOff(){
+	byte inData[3] = {0};
+  
+	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));
+	digitalWrite(SSpin, LOW);                                           
+	inData[0] = SPI.transfer(0x03);                              
+	delay(10);                                                         
+	inData[1] = SPI.transfer(0x03);                              
+	delay(10);
+	inData[2] = SPI.transfer(0x00);
+	delay(10);
+	digitalWrite(SSpin, HIGH);                                          
+	SPI.endTransaction();
+
+	if(inData[0] != 0x31 || inData[1] != 0xF3 || inData[2] != 0x03)
+	{
+		delay(5000);
+		powerOff();
+	}
+}
+
+uint16_t R1::bytes2int(byte LSB, byte MSB){
+	uint16_t val = ((MSB << 8) | LSB);
+	return val;
+}
+
+bool R1::readData(){
+	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));
+	digitalWrite(SSpin, LOW);     
+	
+	test[0] = SPI.transfer(0x30); //0x31
+	delay(10);
+	test[1] = SPI.transfer(0x30);//0xF3
+
+	if ((test[0] != 0x31)||(test[1] != 0xF3)) return false;
+
+	delayMicroseconds(20);
+  
+	for(int i = 0; i<64; i++)
+	{
+		raw[i] = SPI.transfer(0x30);
+		delayMicroseconds(20);
+	}
+ 
+	SPI.endTransaction();
+
+	for (int x=0; x<15; x++){
+		com[x] = bytes2int(raw[(x*2)], raw[(x*2+1)]);
+	}
+	
+	return true;
+}
+
+String R1::logUpdate(){
+	String dataLogLocal = nTot;
+	if (readData()){
+	   goodLog = true;                                                  
+       goodLogAge = millis();
+       badLog = 0;
+       nTot++;
+	
+		for (int x = 0; x<16; x++){
+			dataLogLocal += ',';
+			dataLogLocal += com[x];
+		}
+	} else {
+		 badLog ++;
+		if (badLog >= 5) goodLog = false;								//Good log situation the same as in the Plantower code
+			dataLogLocal += ",-,-,-,-,-,-,-,-,-,-";						//If there is bad data, the string is populated with failure symbols.              
+		if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
+			powerOff();													//the system will cycle and clean the dust bin.
+			delay (2000);
+			powerOn();
+			delay (100);
+			goodLogAge = millis();
+		}
+	}
+	 return dataLogLocal;
+ }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

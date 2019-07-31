@@ -12,13 +12,18 @@ The PMS 5003 runs the read data function as fast as possible, and can
 record new data every 2.3 seconds.
  
 The SPS 30 runs the read data function with the record data function, and
-can record new data every 1 seconds. */
+can record new data every 1 seconds.
+
+The Alphasense R1 runs the read data function with the log update function,
+and can record new data every 1 seconds. The R1 runs on SPI.
+ */
 
 
 #ifndef OPCSensor_h
 #define OPCSensor_h
 
 #include <arduino.h>
+#include <SPI.h>
 #include <Stream.h>
 
 class OPC																//Parent OPC class
@@ -32,6 +37,7 @@ class OPC																//Parent OPC class
 	unsigned long resetTime;											//Age the last good log must reach to trigger a reset
 	
 	public:
+	OPC();
 	OPC(Stream* ser);													//Parent Constructor
 	int getTot();														//Parent quality checks
 	bool getLogQuality();												//get the quality of the log
@@ -92,6 +98,23 @@ class SPS: public OPC
 	void initOPC();														//Overrides of OPC data functions and initialization
 	String logUpdate();
 	bool readData();
+};
+
+class R1: public OPC {
+	private:
+	uint8_t SSpin;
+	byte test[2];
+	byte raw[64];
+	uint16_t com[16];
+	
+	public:
+	R1(uint8_t slave);
+	void initOPC();
+	void powerOn();
+	void powerOff();
+	uint16_t bytes2int(byte LSB, byte MSB);
+	bool readData();
+	String logUpdate();
 };
 
 #endif

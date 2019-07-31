@@ -1,7 +1,7 @@
 Commands
 
 All OPC
- - initialize with a reference to the serial port name, separately begin the serial connection.
+ - construct with a reference to the serial port name, separately begin the serial connection.
  - .getTot() - returns total number of hits
  - .getLogQuality() - returns the quality of the log
  - .initOPC() - will initialize the OPC
@@ -16,3 +16,8 @@ SPS30
 - .powerOn() - used to start measurements (called by initOPC)
 - .powerOff() - used to end measurements
 - .clean() - used to clean the system (called by initOPC)
+
+R1
+- constructed with a slave pin instead of a serial line
+- .powerOn() - used to start full system (called by initOPC)
+- .powerOff() - used to end measurements

@@ -5,6 +5,7 @@
 
 Plantower PlanA(&PMS_SERIAL, 7000);
 SPS SpsA(&SPS_SERIAL);
+R1 r1A(15);
 
 unsigned long Timer[3] = {1,1500,7000};
 unsigned long prevTime[3] = {0};
@@ -16,6 +17,7 @@ SPS_SERIAL.begin(115200);
 while (!Serial5) Serial.println("Waiting...");
 PlanA.initOPC();
 SpsA.initOPC();
+r1A.initOPC();
 Serial.println("System initialized!");
 }
 
@@ -34,8 +36,9 @@ if (millis()-prevTime[1]>=Timer[1]){
 if (millis()-prevTime[2]>=Timer[2]){
   prevTime[2] = millis();
   Serial.println();
-  Serial.println("SPS" + SpsA.logUpdate());
-  Serial.println("Plan" + PlanA.logUpdate());
+  Serial.println("SPS: " + SpsA.logUpdate());
+  Serial.println("Plan: " + PlanA.logUpdate());
+  Serial.println("R1: " + r1A.logUpdate());
   Serial.println();
 }
 
