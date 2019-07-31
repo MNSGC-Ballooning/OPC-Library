@@ -100,20 +100,20 @@ class SPS: public OPC
 	bool readData();
 };
 
-class R1: public OPC {
+class R1: public OPC {													//The R1 runs on SPI Communication
 	private:
-	uint8_t SSpin;
-	byte test[2];
+	uint8_t SSpin;														//Slave Select pin for specification. The code will only run on the default SPI pins.
+	byte test[2];														//Data arrays
 	byte raw[64];
 	uint16_t com[16];
 	
 	public:
-	R1(uint8_t slave);
-	void initOPC();
-	void powerOn();
-	void powerOff();
-	uint16_t bytes2int(byte LSB, byte MSB);
-	bool readData();
+	R1(uint8_t slave);													//Alphasense constructor
+	void initOPC();														//Initializes the OPC
+	void powerOn();														//Power on will activate the fan, laser, and data communication
+	void powerOff();													//Power off will deactivate these same things
+	uint16_t bytes2int(byte LSB, byte MSB);								//Convert given bytes to integers
+	bool readData();													//Overrrides the OPC data functions
 	String logUpdate();
 };
 

@@ -21,7 +21,7 @@ and can record new data every 1 seconds. The R1 runs on SPI.*/
 
 //OPC//
 
-OPC::OPC(){}
+OPC::OPC(){}															//Non-serial constructor
 
 OPC::OPC(Stream* ser){													//Establishes data IO stream
 	s = ser;
@@ -139,7 +139,7 @@ bool Plantower::readData(){												//Command that calls bytes from the plant
 //SPS//
 
 
-SPS::SPS(Stream* ser) : OPC(ser) {}
+SPS::SPS(Stream* ser) : OPC(ser) {}										//Initialize stream using OPC constructor
 
 void SPS::powerOn()                                			            //SPS Power on command. This sends and recieves the power on frame
 {
@@ -333,7 +333,7 @@ for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){               //This w
 
 
 
-R1::R1(uint8_t slave) : OPC() { SSpin = slave; }
+R1::R1(uint8_t slave) : OPC() { SSpin = slave; }						//Constructor
 
 void R1::initOPC(){
 	goodLog = false;													//The same code that initializes the OPC, too lazy to remember the syntax to call
@@ -348,13 +348,13 @@ void R1::initOPC(){
 	delay(5000); 														//Delay to allow fans to reach operating speed
 }
 
-void R1::powerOn(){
+void R1::powerOn(){														//system activation
 	byte inData[3] = {0};
 
-	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));  
+	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));  	//Begins code with a clock speed, Most signicficant bit first, and in SPI mode 1.
 	digitalWrite(SSpin, LOW);                                           
   
-	inData[0] = SPI.transfer(0x03);                               
+	inData[0] = SPI.transfer(0x03);                               		//Check returned bytes to ensure that the command was successfully integrated into thpay
 	delay(10);                                                          
 	inData[1] = SPI.transfer(0x03);                               
 	delay(10);
@@ -363,17 +363,17 @@ void R1::powerOn(){
 	digitalWrite(SSpin, HIGH);                                          
 	SPI.endTransaction();
 
-	if(inData[0] != 0x31 || inData[1] != 0xF3 || inData[2] != 0x03)
+	if(inData[0] != 0x31 || inData[1] != 0xF3 || inData[2] != 0x03)		//If the system does not contain the correct string, then the code will head to Pad
 	{
 		delay(5000);
 		powerOn();
 	}
 }
 
-void R1::powerOff(){
+void R1::powerOff(){													//This is the power down sequence
 	byte inData[3] = {0};
   
-	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));
+	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));		//Sends power down command and verifies that the shutdown has occurred.
 	digitalWrite(SSpin, LOW);                                           
 	inData[0] = SPI.transfer(0x03);                              
 	delay(10);                                                         
@@ -384,46 +384,46 @@ void R1::powerOff(){
 	digitalWrite(SSpin, HIGH);                                          
 	SPI.endTransaction();
 
-	if(inData[0] != 0x31 || inData[1] != 0xF3 || inData[2] != 0x03)
+	if(inData[0] != 0x31 || inData[1] != 0xF3 || inData[2] != 0x03)		
 	{
 		delay(5000);
 		powerOff();
 	}
 }
 
-uint16_t R1::bytes2int(byte LSB, byte MSB){
+uint16_t R1::bytes2int(byte LSB, byte MSB){								//Byte conversion to integers
 	uint16_t val = ((MSB << 8) | LSB);
 	return val;
 }
 
 bool R1::readData(){
-	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));
+	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));		//Open SPI line
 	digitalWrite(SSpin, LOW);     
 	
-	test[0] = SPI.transfer(0x30); //0x31
-	delay(10);
+	test[0] = SPI.transfer(0x30); //0x31								//Check the ready bytes. If the R1 is not ready to transmit data, then it will not
+	delay(10);															//send 0x31 and 0xF3, and the data read will fail.
 	test[1] = SPI.transfer(0x30);//0xF3
 
 	if ((test[0] != 0x31)||(test[1] != 0xF3)) return false;
-
+										
 	delayMicroseconds(20);
   
-	for(int i = 0; i<64; i++)
+	for(int i = 0; i<64; i++)											//Raw data is collected for the 16 bins (16bits each)
 	{
 		raw[i] = SPI.transfer(0x30);
 		delayMicroseconds(20);
 	}
  
-	SPI.endTransaction();
+	SPI.endTransaction();												//A checksum for the R1 that is indevelopnent.
 
-	for (int x=0; x<15; x++){
+	for (int x=0; x<15; x++){											//The data is parse- two bits per pin
 		com[x] = bytes2int(raw[(x*2)], raw[(x*2+1)]);
 	}
 	
 	return true;
 }
 
-String R1::logUpdate(){
+String R1::logUpdate(){													//If the log is successful, each bin will be logged.
 	String dataLogLocal = nTot;
 	if (readData()){
 	   goodLog = true;                                                  
