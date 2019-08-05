@@ -125,9 +125,13 @@ bool Plantower::readData(){												//Command that calls bytes from the plant
  
   memcpy((void *)&PMSdata, (void *)buffer_u16, 30);						//Put it into a nice struct :)
  
-  if (sum != PMSdata.checksum) {
+  if (sum != PMSdata.checksum) {										//if the checksum fails, return false
     return false;
   }
+  
+  if ((String(PMSdata.particles_03um)=="")||((PMSdata.particles_03um==532)&&(String(PMSdata.particles_05um)==""))){
+	 return false;														//If the system returns no error but gets an error notification, return false
+ }
 
 	goodLog = true;														//goodLog is set to true of every good log
 	goodLogAge = millis();
@@ -449,21 +453,3 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 	}
 	 return dataLogLocal;
  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
