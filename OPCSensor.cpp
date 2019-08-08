@@ -39,15 +39,14 @@ void OPC::initOPC(){													//Initialize the serial and OPC variables
 	resetTime = 1200000;												//autotrigger forced reset timer
 }
 
-String OPC::logUpdate(){												//Placeholders: will always be redefined
+String OPC::CSVHeader(){ return ("~"); }								//Placeholders: will always be redefined
+
+String OPC::logUpdate(){				
 	String localDataLog = "OPC not specified!";
 	return localDataLog;
 }
 
-bool OPC::readData(){
-	bool greatRead = false;
-	return greatRead;
-}
+bool OPC::readData(){ return false; }
 
 void OPC::setReset(unsigned long resetTimer){ resetTime = resetTimer; } //Manually set the length of the forced reset
 
@@ -58,6 +57,11 @@ void OPC::setReset(unsigned long resetTimer){ resetTime = resetTimer; } //Manual
 Plantower::Plantower(Stream* ser, unsigned int planLog) : OPC(ser) {	//Plantower constructor- contains the log rate and the plantower stream
 		logRate = planLog;
 	}
+	
+String Plantower::CSVHeader(){											//Returns a data header in CSV formate
+	String header = "hits,03um,05um,10um,25um,50um,100um";
+	return header;
+}
 
 String Plantower::logUpdate(){
 	String localDataLog = "";															
@@ -85,7 +89,7 @@ String Plantower::logUpdate(){
 		localDataLog += "-,-,-,-,-,-";
 		badLog++;                                                       //If there are five consecutive bad logs, the data string will print a warning
 		if (badLog >= 5){
-		localDataLog += '%' + ',' + 'Q' + ',' + '=' + ',' + '!' + ',' + '@' + ',' + '$';
+		localDataLog += "Error! " + String(badLog);
 		}
 		if ((millis()-goodLogAge)>=resetTime){							//For the plantower, a reset is just a long delay and a hope
 			delay(20000);
@@ -203,6 +207,11 @@ void SPS::initOPC()                            			  		        //SPS initializati
     delay(20500);                                                       //are taken to get a clean, consistent flow through the system.
 }
 
+String SPS::CSVHeader(){												//Returns a data header in CSV formate
+	String header = "hits,MC-1um,MC-2.5um,MC-4.0um,MC-10um,NC-0.5um,NC-1um,NC-2.5um,NC-4.0um,NC-10um,Avg. PM";
+	return header;
+}
+
 bool SPS::readData(){                                     		      	//SPS data request. The system will pull data and ensure the accuracy.                                                                   
   s->write(0x7E);                                                       //The read data function will return true if the data request is successful.
   s->write((byte)0x00);
@@ -274,6 +283,20 @@ byte stuffByte = 0;
     for(unsigned short j = 0; j<20; j++) NumC[j] = buffers[j+16];       //The number concentration data is removed from the buffer.
     for (unsigned short j=0; j<4; j++) AvgS[j] = buffers[j+36];         //The average size data is removed from the buffer.
 
+																		//The data is sent in reverse. This will flip the order of every four bytes
+	unsigned short flip = 0;                                            //Index of array to flip- I KNOW THIS IS REDUNDANT FOR THE FLIP IN THE FOR LOOP. However, I want flip to continue to increase.
+	unsigned short result = 0;                                          //Index of array that will be the result
+
+	for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){           //This will loop through the main flipping mechanism
+		result = flipMax - 1;                                           //The result starts one lower than the flipMax because of counting from zero
+		for (flip; flip<flipMax; flip++){                               //Flipping mechanism. This flips the results of the data request. IGNORE THIS WARNING.
+			if (flipMax < 5)  a.ASA[flip] = AvgS[result];               //Flips average size. Average size only has four bytes.
+			if (flipMax < 17) m.MCA[flip] = MassC[result];              //Flips mass. Mass has four less bytes than number.
+			n.NCA[flip] = NumC[result];                                 //Flips number count.
+			result--;
+		}
+	}
+
   return true;                                                          //If the reading is successful, the function will return true.
 }
 
@@ -284,19 +307,6 @@ String SPS::logUpdate(){                          				        //This function wi
        goodLogAge = millis();
        badLog = 0;
        nTot++;
-																		//The data is sent in reverse. This will flip the order of every four bytes
-unsigned short flip = 0;                                                //Index of array to flip- I KNOW THIS IS REDUNDANT FOR THE FLIP IN THE FOR LOOP. However, I want flip to continue to increase.
-unsigned short result = 0;                                              //Index of array that will be the result
-
-for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){               //This will loop through the main flipping mechanism
-  result = flipMax - 1;                                                 //The result starts one lower than the flipMax because of counting from zero
-    for (flip; flip<flipMax; flip++){                                   //Flipping mechanism. This flips the results of the data request. IGNORE THIS WARNING.
-      if (flipMax < 5)  a.ASA[flip] = AvgS[result];                     //Flips average size. Average size only has four bytes.
-      if (flipMax < 17) m.MCA[flip] = MassC[result];                    //Flips mass. Mass has four less bytes than number.
-       n.NCA[flip] = NumC[result];                                      //Flips number count.
-    result--;
-   }
-}
 
    for(unsigned short k = 0; k<4; k++){                                 //This loop will populate the data string with mass concentrations.
       if (k==0) {
@@ -336,21 +346,7 @@ for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){               //This w
 //R1//
 
 
-
 R1::R1(uint8_t slave) : OPC() { SSpin = slave; }						//Constructor
-
-void R1::initOPC(){
-	goodLog = false;													//The same code that initializes the OPC, too lazy to remember the syntax to call
-	goodLogAge = 0;														//the parent function.
-	badLog = 0;
-	nTot = 1;
-	resetTime = 1200000;
-
-	SPI.begin();        											 	//Intialize SPI in Arduino
-	delay(5000);
-	powerOn();
-	delay(5000); 														//Delay to allow fans to reach operating speed
-}
 
 void R1::powerOn(){														//system activation
 	byte inData[3] = {0};
@@ -393,6 +389,24 @@ void R1::powerOff(){													//This is the power down sequence
 		delay(5000);
 		powerOff();
 	}
+}
+
+void R1::initOPC(){
+	goodLog = false;													//The same code that initializes the OPC, too lazy to remember the syntax to call
+	goodLogAge = 0;														//the parent function.
+	badLog = 0;
+	nTot = 1;
+	resetTime = 1200000;
+
+	SPI.begin();        											 	//Intialize SPI in Arduino
+	delay(5000);
+	powerOn();
+	delay(5000); 														//Delay to allow fans to reach operating speed
+}
+
+String R1::CSVHeader(){													//Returns a data header in CSV formate
+	String header = "hits,0.4um,0.7um,1.1um,1.5um,1.9um,2.4um,3um,4um,5um,6um,7um,8um,9um,10um,11um,12um,12.4um.";
+	return header;
 }
 
 uint16_t R1::bytes2int(byte LSB, byte MSB){								//Byte conversion to integers

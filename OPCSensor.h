@@ -42,7 +42,8 @@ class OPC																//Parent OPC class
 	int getTot();														//Parent quality checks
 	bool getLogQuality();												//get the quality of the log
 	void initOPC();														//Initialization
-	String logUpdate();													//Placeholders
+	String CSVHeader();													//Placeholders
+	String logUpdate();													
 	bool readData();
 	void setReset(unsigned long resetTimer);							//Manually set the bad log reset timer
 };
@@ -62,7 +63,8 @@ class Plantower: public OPC
 	
 	public:
 	Plantower(Stream* ser, unsigned int planLog);						//Plantower constructor
-	String logUpdate();													//Overrides of OPC data functions
+	String CSVHeader();													//Overrides of OPC data functions
+	String logUpdate();
 	bool readData();
 };
 
@@ -96,6 +98,7 @@ class SPS: public OPC
 	void powerOff();
 	void clean();
 	void initOPC();														//Overrides of OPC data functions and initialization
+	String CSVHeader();
 	String logUpdate();
 	bool readData();
 };
@@ -113,7 +116,8 @@ class R1: public OPC {													//The R1 runs on SPI Communication
 	void powerOn();														//Power on will activate the fan, laser, and data communication
 	void powerOff();													//Power off will deactivate these same things
 	uint16_t bytes2int(byte LSB, byte MSB);								//Convert given bytes to integers
-	bool readData();													//Overrrides the OPC data functions
+	String CSVHeader();													//Overrrides the OPC data functions
+	bool readData();													
 	String logUpdate();
 };
 

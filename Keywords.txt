@@ -1,18 +1,20 @@
-Commands
+Commands for OPCSensor library
 
-All OPC
- - construct with a reference to the serial port name, separately begin the serial connection.
+All OPC:
+ - construct with a reference to the serial port name (&serialName), and separately begin the serial connection.
  - .getTot() - returns total number of hits
  - .getLogQuality() - returns the quality of the log
  - .initOPC() - will initialize the OPC
- - .logUpdate() - will return a data string
+ - .CSVHeader() - will provide a header for the logUpdate data string
+ - .logUpdate() - will return a data string in CSV format
  - .readData() - will read the data and return a bool indicating success
  - .setReset(int) - will manually set the automatic bad log reset time.The default is 20 minutes of constantly poor logging. This will cause a 21 second delay in the code operation.
- 
+
+Classes:
 Plantower
 - add an additional log rate in milliseconds as a second parameter to the constructor
 
-SPS30
+SPS
 - .powerOn() - used to start measurements (called by initOPC)
 - .powerOff() - used to end measurements
 - .clean() - used to clean the system (called by initOPC)
