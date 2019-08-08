@@ -13,7 +13,8 @@ The PMS 5003 runs the read data function as fast as possible, and can
 record new data every 2.3 seconds. The PMS5003 serial is 9600 baud.
  
 The SPS 30 runs the read data function with the record data function, and
-can record new data every 1 seconds. The SPS30 serial is 115200 baud.
+can record new data every 1 seconds. The SPS30 serial is 115200 baud. The
+SPS 30 is configured for UART communication. I2C communication is not supported.
 
 The Alphasense R1 runs the read data function with the log update function,
 and can record new data every 1 seconds. The R1 runs on SPI. As of the latest

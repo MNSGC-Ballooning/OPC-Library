@@ -72,17 +72,11 @@ String Plantower::logUpdate(){
     
     if (goodLog) {
     localDataLog += PMSdata.particles_03um;                             //If data is in the buffer, log it
-    localDataLog += ",";
-    localDataLog += PMSdata.particles_05um;
-    localDataLog += ",";
-    localDataLog += PMSdata.particles_10um;
-    localDataLog += ",";
-    localDataLog += PMSdata.particles_25um;
-    localDataLog += ",";
-    localDataLog += PMSdata.particles_50um;
-    localDataLog += ",";
-    localDataLog += PMSdata.particles_100um;
-
+    localDataLog += "," + PMSdata.particles_05um;
+    localDataLog += "," + PMSdata.particles_10um;
+    localDataLog += "," + PMSdata.particles_25um;
+    localDataLog += "," + PMSdata.particles_50um;
+    localDataLog += "," + PMSdata.particles_100um;
     nTot += 1;                                                   	    //Total samples
 	
 	} else {
@@ -195,11 +189,7 @@ void SPS::clean()                                		                //SPS Power o
 
 void SPS::initOPC()                            			  		        //SPS initialization code. Requires input of SPS serial stream.
 {
-	goodLog = false;													//The same code that initializes the OPC, too lazy to remember the syntax to call
-	goodLogAge = 0;														//the parent function.
-	badLog = 0;
-	nTot = 1;
-	resetTime = 1200000;
+	OPC::initOPC();														//Calls original init
 	
     powerOn();                                       	                //Sends SPS active measurement command
     delay(100);
@@ -392,11 +382,7 @@ void R1::powerOff(){													//This is the power down sequence
 }
 
 void R1::initOPC(){
-	goodLog = false;													//The same code that initializes the OPC, too lazy to remember the syntax to call
-	goodLogAge = 0;														//the parent function.
-	badLog = 0;
-	nTot = 1;
-	resetTime = 1200000;
+	OPC::initOPC();														//Calls original init
 
 	SPI.begin();        											 	//Intialize SPI in Arduino
 	delay(5000);

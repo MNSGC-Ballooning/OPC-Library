@@ -8,7 +8,7 @@ All OPC:
  - .CSVHeader() - will provide a header for the logUpdate data string
  - .logUpdate() - will return a data string in CSV format
  - .readData() - will read the data and return a bool indicating success
- - .setReset(int) - will manually set the automatic bad log reset time.The default is 20 minutes of constantly poor logging. This will cause a 21 second delay in the code operation.
+ - .setReset(int) - will manually set the automatic bad log reset time. The default is 20 minutes of constantly poor logging. This will cause a 21 second delay in the code operation.
 
 Classes:
 Plantower
