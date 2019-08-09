@@ -9,6 +9,9 @@ R1 r1A(15);
 
 unsigned long Timer[3] = {1,1500,7000};
 unsigned long prevTime[3] = {0};
+uint16_t *pullPlan[6];
+float *pullSPS[10];
+uint16_t *pullr1[16];
 
 void setup() {
 Serial.begin(115200);
@@ -35,6 +38,11 @@ if (millis()-prevTime[1]>=Timer[1]){
 
 if (millis()-prevTime[2]>=Timer[2]){
   prevTime[2] = millis();
+
+  PlanA.getData(pullPlan,6);
+  SpsA.getData(pullSPS,10);
+  r1A.getData(pullr1,16);
+  
   Serial.println();
   Serial.println("SPS: " + SpsA.logUpdate());
   Serial.println("Plan: " + PlanA.logUpdate());

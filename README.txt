@@ -10,15 +10,18 @@ Serial begin must be called separately for systems that run through a serial por
 The library has been optimized for Teensy 3.5/3.6, but should work on any system.
 
 The PMS 5003 runs the read data function as fast as possible, and can
-record new data every 2.3 seconds. The PMS5003 serial is 9600 baud.
+record new data every 2.3 seconds. The PMS5003 serial is 9600 baud. The Plantower has
+6 data points saved in a uint16_t data type.
  
 The SPS 30 runs the read data function with the record data function, and
 can record new data every 1 seconds. The SPS30 serial is 115200 baud. The
 SPS 30 is configured for UART communication. I2C communication is not supported.
+The SPS 30 has 10 data points saved in a float data type.
 
 The Alphasense R1 runs the read data function with the log update function,
 and can record new data every 1 seconds. The R1 runs on SPI. As of the latest
-update, the R1 can only run on the primary SPI bus.
+update, the R1 can only run on the primary SPI bus. The Alphasense R1 has 
+16 data points saved in a uint16_t data type.
 
 The Plantower logs the number of hits, 03um, 05um, 10um, 25um, 50um, 100um.
 The SPS 30 logs the number of hits, Mass Concentrations 1um, 2.5um, 4.0um, 10um, Number Concentrations 0.5um, 1um, 2.5um, 4.0um, 10um, Average Particle size.
@@ -34,3 +37,5 @@ With the Plantower, readData must be called separately as fast as possible befor
 With every other OPC, logUpdate will call readData automatically.
 
 A full list of the available commands exists in the "Keywords" text file.
+
+The data is passed from getData through an array.
