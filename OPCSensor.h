@@ -45,6 +45,8 @@ class OPC																//Parent OPC class
 	String CSVHeader();													//Placeholders
 	String logUpdate();													
 	bool readData();
+	void getData(uint16_t* dataPtr, unsigned int arrayFill);
+	void getData(uint16_t* dataPtr, unsigned int arrayFill, unsigned int arrayStart);
 	void setReset(unsigned long resetTimer);							//Manually set the bad log reset timer
 };
 
@@ -66,6 +68,8 @@ class Plantower: public OPC
 	String CSVHeader();													//Overrides of OPC data functions
 	String logUpdate();
 	bool readData();
+	void getData(uint16_t* dataPtr, unsigned int arrayFill);			//Get data will pass the data into an array via a pointer
+	void getData(uint16_t* dataPtr, unsigned int arrayFill, unsigned int arrayStart);
 };
 
 class SPS: public OPC
@@ -101,6 +105,8 @@ class SPS: public OPC
 	String CSVHeader();
 	String logUpdate();
 	bool readData();
+	void getData(uint16_t* dataPtr, unsigned int arrayFill);			//Get data will pass the data into an array via a pointer
+	void getData(uint16_t* dataPtr, unsigned int arrayFill, unsigned int arrayStart);
 };
 
 class R1: public OPC {													//The R1 runs on SPI Communication
@@ -117,8 +123,10 @@ class R1: public OPC {													//The R1 runs on SPI Communication
 	void powerOff();													//Power off will deactivate these same things
 	uint16_t bytes2int(byte LSB, byte MSB);								//Convert given bytes to integers
 	String CSVHeader();													//Overrrides the OPC data functions
-	bool readData();													
 	String logUpdate();
+	bool readData();
+	void getData(uint16_t* dataPtr, unsigned int arrayFill);			//Get data will pass the data into an array via a pointer
+	void getData(uint16_t* dataPtr, unsigned int arrayFill, unsigned int arrayStart);													
 };
 
 #endif

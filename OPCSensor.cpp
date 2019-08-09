@@ -48,6 +48,10 @@ String OPC::logUpdate(){
 
 bool OPC::readData(){ return false; }
 
+void OPC::getData(uint16_t* dataPtr, unsigned int arrayFill){}
+
+void OPC::getData(uint16_t* dataPtr, unsigned int arrayFill, unsigned int arrayStart){}
+
 void OPC::setReset(unsigned long resetTimer){ resetTime = resetTimer; } //Manually set the length of the forced reset
 
 
@@ -137,6 +141,12 @@ bool Plantower::readData(){												//Command that calls bytes from the plant
   return true;
 }
 
+void getData(uint16_t* dataPtr, unsigned int arrayFill){
+	//For loop, fill array until no more data or until reach array fill
+}
+void getData(uint16_t* dataPtr, unsigned int arrayFill, unsigned int arrayStart){
+	
+}
 
 //SPS//
 
@@ -201,6 +211,48 @@ String SPS::CSVHeader(){												//Returns a data header in CSV formate
 	String header = "hits,MC-1um,MC-2.5um,MC-4.0um,MC-10um,NC-0.5um,NC-1um,NC-2.5um,NC-4.0um,NC-10um,Avg. PM";
 	return header;
 }
+
+String SPS::logUpdate(){                          				        //This function will parse the data and form loggable strings.
+    String dataLogLocal = nTot;   
+    if (readData()){                                                    //Read the data and determine the read success.
+       goodLog = true;                                                  //This will establish the good log inidicators.
+       goodLogAge = millis();
+       badLog = 0;
+       nTot++;
+
+   for(unsigned short k = 0; k<4; k++){                                 //This loop will populate the data string with mass concentrations.
+      if (k==0) {
+         dataLogLocal += ',' + String(m.MCF[k]) + ',';                  //Each bin from the sensor includes all of the particles from the bin
+        } else {                                                        //below it. This will show the number of particles that reside invidually
+         dataLogLocal += String(m.MCF[k]-m.MCF[k-1]) + ',';             //in each of the four bins.
+        }
+   }
+
+   for(unsigned short k = 0; k<5; k++){                                 //This loop will populate the data string with number concentrations.
+      if (k==0) {
+        dataLogLocal += String(n.NCF[k]) + ',';
+      } else {                                          
+        dataLogLocal += String(n.NCF[k]-n.NCF[k-1]) + ',';              //These bins are compiled in the same manner as the mass bins.     
+      }
+   }
+    dataLogLocal += String(a.ASF);                                      //This adds the average particle size to the end of the bin.
+    
+  } else {
+	 badLog ++;
+	 if (badLog >= 5) goodLog = false;									//Good log situation the same as in the Plantower code
+	 dataLogLocal += ",-,-,-,-,-,-,-,-,-,-";							//If there is bad data, the string is populated with failure symbols.              
+	 if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
+		 powerOff();													//the system will cycle and clean the dust bin.
+		 delay (2000);
+		 powerOn();
+		 delay (100);
+		 clean();
+		 delay(20500);
+		 goodLogAge = millis();
+	 }
+	}
+	return dataLogLocal;
+  }
 
 bool SPS::readData(){                                     		      	//SPS data request. The system will pull data and ensure the accuracy.                                                                   
   s->write(0x7E);                                                       //The read data function will return true if the data request is successful.
@@ -290,48 +342,6 @@ byte stuffByte = 0;
   return true;                                                          //If the reading is successful, the function will return true.
 }
 
-String SPS::logUpdate(){                          				        //This function will parse the data and form loggable strings.
-    String dataLogLocal = nTot;   
-    if (readData()){                                                    //Read the data and determine the read success.
-       goodLog = true;                                                  //This will establish the good log inidicators.
-       goodLogAge = millis();
-       badLog = 0;
-       nTot++;
-
-   for(unsigned short k = 0; k<4; k++){                                 //This loop will populate the data string with mass concentrations.
-      if (k==0) {
-         dataLogLocal += ',' + String(m.MCF[k]) + ',';                  //Each bin from the sensor includes all of the particles from the bin
-        } else {                                                        //below it. This will show the number of particles that reside invidually
-         dataLogLocal += String(m.MCF[k]-m.MCF[k-1]) + ',';             //in each of the four bins.
-        }
-   }
-
-   for(unsigned short k = 0; k<5; k++){                                 //This loop will populate the data string with number concentrations.
-      if (k==0) {
-        dataLogLocal += String(n.NCF[k]) + ',';
-      } else {                                          
-        dataLogLocal += String(n.NCF[k]-n.NCF[k-1]) + ',';              //These bins are compiled in the same manner as the mass bins.     
-      }
-   }
-    dataLogLocal += String(a.ASF);                                      //This adds the average particle size to the end of the bin.
-    
-  } else {
-	 badLog ++;
-	 if (badLog >= 5) goodLog = false;									//Good log situation the same as in the Plantower code
-	 dataLogLocal += ",-,-,-,-,-,-,-,-,-,-";							//If there is bad data, the string is populated with failure symbols.              
-	 if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
-		 powerOff();													//the system will cycle and clean the dust bin.
-		 delay (2000);
-		 powerOn();
-		 delay (100);
-		 clean();
-		 delay(20500);
-		 goodLogAge = millis();
-	 }
-	}
-	return dataLogLocal;
-  }
-
 
 //R1//
 
@@ -400,33 +410,6 @@ uint16_t R1::bytes2int(byte LSB, byte MSB){								//Byte conversion to integers
 	return val;
 }
 
-bool R1::readData(){
-	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));		//Open SPI line
-	digitalWrite(SSpin, LOW);     
-	
-	test[0] = SPI.transfer(0x30); //0x31								//Check the ready bytes. If the R1 is not ready to transmit data, then it will not
-	delay(10);															//send 0x31 and 0xF3, and the data read will fail.
-	test[1] = SPI.transfer(0x30);//0xF3
-
-	if ((test[0] != 0x31)||(test[1] != 0xF3)) return false;
-										
-	delayMicroseconds(20);
-  
-	for(int i = 0; i<64; i++)											//Raw data is collected for the 16 bins (16bits each)
-	{
-		raw[i] = SPI.transfer(0x30);
-		delayMicroseconds(20);
-	}
- 
-	SPI.endTransaction();												//A checksum for the R1 that is indevelopnent.
-
-	for (int x=0; x<15; x++){											//The data is parse- two bits per pin
-		com[x] = bytes2int(raw[(x*2)], raw[(x*2+1)]);
-	}
-	
-	return true;
-}
-
 String R1::logUpdate(){													//If the log is successful, each bin will be logged.
 	String dataLogLocal = nTot;
 	if (readData()){
@@ -453,3 +436,30 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 	}
 	 return dataLogLocal;
  }
+
+bool R1::readData(){
+	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));		//Open SPI line
+	digitalWrite(SSpin, LOW);     
+	
+	test[0] = SPI.transfer(0x30); //0x31								//Check the ready bytes. If the R1 is not ready to transmit data, then it will not
+	delay(10);															//send 0x31 and 0xF3, and the data read will fail.
+	test[1] = SPI.transfer(0x30);//0xF3
+
+	if ((test[0] != 0x31)||(test[1] != 0xF3)) return false;
+										
+	delayMicroseconds(20);
+  
+	for(int i = 0; i<64; i++)											//Raw data is collected for the 16 bins (16bits each)
+	{
+		raw[i] = SPI.transfer(0x30);
+		delayMicroseconds(20);
+	}
+ 
+	SPI.endTransaction();												//A checksum for the R1 that is indevelopnent.
+
+	for (int x=0; x<15; x++){											//The data is parse- two bits per pin
+		com[x] = bytes2int(raw[(x*2)], raw[(x*2+1)]);
+	}
+	
+	return true;
+}

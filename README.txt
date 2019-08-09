@@ -3,8 +3,8 @@ Optical Particle Counter Library
 University of Minnesota - Candler MURI
 Written July 2019
 
-These are the files for the OPC library. This will run any optical particle counters
-used for MURI that do not have independent logging capabilities.
+These are the files for the OPC library. (OPCSensor.h) This will run any
+optical particle counters used for MURI that do not have independent logging capabilities.
 All particle counters will need to be run in loops of different speeds.
 Serial begin must be called separately for systems that run through a serial port.
 The library has been optimized for Teensy 3.5/3.6, but should work on any system.
