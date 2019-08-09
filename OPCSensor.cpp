@@ -52,9 +52,9 @@ String OPC::logUpdate(){
 
 bool OPC::readData(){ return false; }
 
-void OPC::getData(float *dataPtr[], unsigned int arrayFill){}
+void OPC::getData(float dataPtr[], unsigned int arrayFill){}
 
-void OPC::getData(float *dataPtr[], unsigned int arrayFill, unsigned int arrayStart){}
+void OPC::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){}
 
 void OPC::setReset(unsigned long resetTimer){ resetTime = resetTimer; } //Manually set the length of the forced reset
 
@@ -147,23 +147,23 @@ bool Plantower::readData(){												//Command that calls bytes from the plant
   return true;
 }
 
-void Plantower::getData(float *dataPtr[], unsigned int arrayFill){
+void Plantower::getData(float dataPtr[], unsigned int arrayFill){
 	unsigned int i = 0;
 	float dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
 	
 	while ((i<arrayFill)&&(i<6)){
-		*dataPtr[i]=dataArray[i];
+		dataPtr[i]=dataArray[i];
 		
 		i++;
 	}
 }
 
-void Plantower::getData(float *dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
+void Plantower::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
 	unsigned int i = arrayStart;
 	float dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
 	
 	while ((i<arrayFill)&&(i<6)){		
-		*dataPtr[i]=dataArray[i];
+		dataPtr[i]=dataArray[i];
 		
 		i++;
 	}
@@ -364,23 +364,23 @@ byte stuffByte = 0;
   return true;                                                          //If the reading is successful, the function will return true.
 }
 
-void SPS::getData(float *dataPtr[], unsigned int arrayFill){
+void SPS::getData(float dataPtr[], unsigned int arrayFill){
 	unsigned int i = 0;
 	float dataArray[10] = {m.MCF[0],m.MCF[1],m.MCF[2],m.MCF[3],n.NCF[0],n.NCF[1],n.NCF[2],n.NCF[3],n.NCF[4],a.ASF};
 	
 	while ((i<arrayFill)&&(i<10)){
-		*dataPtr[i]=dataArray[i];
+		dataPtr[i]=dataArray[i];
 		
 		i++;
 	}
 }
 
-void SPS::getData(float *dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
+void SPS::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
 	unsigned int i = arrayStart;
 	float dataArray[10] = {m.MCF[0],m.MCF[1],m.MCF[2],m.MCF[3],n.NCF[0],n.NCF[1],n.NCF[2],n.NCF[3],n.NCF[4],a.ASF};
 	
 	while ((i<arrayFill)&&(i<10)){
-		*dataPtr[i]=dataArray[i];
+		dataPtr[i]=dataArray[i];
 		
 		i++;
 	}
@@ -510,21 +510,21 @@ bool R1::readData(){
 	return true;
 }
 
-void R1::getData(float *dataPtr[], unsigned int arrayFill){
+void R1::getData(float dataPtr[], unsigned int arrayFill){
 	unsigned int i = 0;
 	
 	while ((i<arrayFill)&&(i<16)){
-		*dataPtr[i]=com[i];
+		dataPtr[i]=com[i];
 		
 		i++;
 	}
 }
 
-void R1::getData(float *dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
+void R1::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
 	unsigned int i = arrayStart;
 	
 	while ((i<arrayFill)&&(i<16)){
-		*dataPtr[i]=com[i];
+		dataPtr[i]=com[i];
 		
 		i++;
 	}

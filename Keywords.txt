@@ -1,27 +1,15 @@
-Commands for OPCSensor library
-
-All OPC:
- - construct with a reference to the serial port name (&serialName), and separately begin the serial connection.
- - .getTot() - returns total number of hits (int)
- - .getLogQuality() - returns the quality of the log (bool)
- - .initOPC() - will initialize the OPC (void)
- - .CSVHeader() - will provide a header for the logUpdate data string (String)
- - .logUpdate() - will return a data string in CSV format (String)
- - .readData() - will read the data and return a bool indicating success (bool)
- - .getData(array, arraySize) - will save data as floats into the passed arrays
- - .getData(array, arraySize, arrayStart) - will save data as floats into passed arrays starting at the array start
- - .setReset(int) - will manually set the automatic bad log reset time. (void) The default is 20 minutes of constantly poor logging. This will cause a 21 second delay in the code operation.
-
-Classes:
-Plantower
-- add an additional log rate in milliseconds as a second parameter to the constructor
-
-SPS
-- .powerOn() - used to start measurements (void) (called by initOPC)
-- .powerOff() - used to end measurements (void)
-- .clean() - used to clean the system (void) (called by initOPC)
-
-R1
-- constructed with a slave pin instead of a serial line
-- .powerOn() - used to start full system (void) (called by initOPC)
-- .powerOff() - used to end measurements (void)
+OPC	KEYWORD1
+Plantower	KEYWORD1
+SPS	KEYWORD1
+R1	KEYWORD1
+getTot	KEYWORD2
+getLogQuality	KEYWORD2
+initOPC	KEYWORD2
+CSVHeader	KEYWORD2
+logUpdate	KEYWORD2
+readData	KEYWORD2
+getData	KEYWORD2
+setReset	KEYWORD2
+powerOn	KEYWORD2
+powerOff	KEYWORD2
+clean	KEYWORD2

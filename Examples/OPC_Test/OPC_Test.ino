@@ -9,9 +9,9 @@ R1 r1A(15);
 
 unsigned long Timer[3] = {1,1500,7000};
 unsigned long prevTime[3] = {0};
-float *pullPlan[6];
-float *pullSPS[10];
-float *pullr1[16];
+float pullPlan[6];
+float pullSPS[10];
+float pullr1[16];
 
 void setup() {
 Serial.begin(115200);
