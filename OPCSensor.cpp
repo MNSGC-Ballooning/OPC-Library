@@ -19,7 +19,11 @@ and can record new data every 1 seconds. The R1 runs on SPI.*/
 
 #include "OPCSensor.h"
 
+
+
 //OPC//
+
+
 
 OPC::OPC(){}															//Non-serial constructor
 
@@ -48,14 +52,16 @@ String OPC::logUpdate(){
 
 bool OPC::readData(){ return false; }
 
-void OPC::getData(uint16_t *dataPtr[], unsigned int arrayFill){}
+void OPC::getData(float *dataPtr[], unsigned int arrayFill){}
 
-void OPC::getData(uint16_t *dataPtr[], unsigned int arrayFill, unsigned int arrayStart){}
+void OPC::getData(float *dataPtr[], unsigned int arrayFill, unsigned int arrayStart){}
 
 void OPC::setReset(unsigned long resetTimer){ resetTime = resetTimer; } //Manually set the length of the forced reset
 
 
+
 //PLANTOWER//
+
 
 
 Plantower::Plantower(Stream* ser, unsigned int planLog) : OPC(ser) {	//Plantower constructor- contains the log rate and the plantower stream
@@ -141,9 +147,9 @@ bool Plantower::readData(){												//Command that calls bytes from the plant
   return true;
 }
 
-void Plantower::getData(uint16_t *dataPtr[], unsigned int arrayFill){
+void Plantower::getData(float *dataPtr[], unsigned int arrayFill){
 	unsigned int i = 0;
-	uint16_t dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
+	float dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
 	
 	while ((i<arrayFill)&&(i<6)){
 		*dataPtr[i]=dataArray[i];
@@ -152,9 +158,9 @@ void Plantower::getData(uint16_t *dataPtr[], unsigned int arrayFill){
 	}
 }
 
-void Plantower::getData(uint16_t *dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
+void Plantower::getData(float *dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
 	unsigned int i = arrayStart;
-	uint16_t dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
+	float dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
 	
 	while ((i<arrayFill)&&(i<6)){		
 		*dataPtr[i]=dataArray[i];
@@ -163,7 +169,10 @@ void Plantower::getData(uint16_t *dataPtr[], unsigned int arrayFill, unsigned in
 	}
 }
 
+
+
 //SPS//
+
 
 
 SPS::SPS(Stream* ser) : OPC(ser) {}										//Initialize stream using OPC constructor
@@ -378,7 +387,9 @@ void SPS::getData(float *dataPtr[], unsigned int arrayFill, unsigned int arraySt
 }
 
 
+
 //R1//
+
 
 
 R1::R1(uint8_t slave) : OPC() { SSpin = slave; }						//Constructor
@@ -499,7 +510,7 @@ bool R1::readData(){
 	return true;
 }
 
-void R1::getData(uint16_t *dataPtr[], unsigned int arrayFill){
+void R1::getData(float *dataPtr[], unsigned int arrayFill){
 	unsigned int i = 0;
 	
 	while ((i<arrayFill)&&(i<16)){
@@ -509,7 +520,7 @@ void R1::getData(uint16_t *dataPtr[], unsigned int arrayFill){
 	}
 }
 
-void R1::getData(uint16_t *dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
+void R1::getData(float *dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
 	unsigned int i = arrayStart;
 	
 	while ((i<arrayFill)&&(i<16)){

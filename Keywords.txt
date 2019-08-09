@@ -8,8 +8,8 @@ All OPC:
  - .CSVHeader() - will provide a header for the logUpdate data string (String)
  - .logUpdate() - will return a data string in CSV format (String)
  - .readData() - will read the data and return a bool indicating success (bool)
- - .getData(array, arraySize) - will save data as floats or uint16_t into the passed arrays
- - .getData(array, arraySize, arrayStart) - will save data as floats or uint16_t into passed arrays starting at the array start
+ - .getData(array, arraySize) - will save data as floats into the passed arrays
+ - .getData(array, arraySize, arrayStart) - will save data as floats into passed arrays starting at the array start
  - .setReset(int) - will manually set the automatic bad log reset time. (void) The default is 20 minutes of constantly poor logging. This will cause a 21 second delay in the code operation.
 
 Classes:
