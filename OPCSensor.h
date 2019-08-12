@@ -51,6 +51,8 @@ class OPC																//Parent OPC class
 	void setReset(unsigned long resetTimer);							//Manually set the bad log reset timer
 };
 
+
+
 class Plantower: public OPC
 {                              
 	private:
@@ -72,6 +74,8 @@ class Plantower: public OPC
 	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
 	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);
 };
+
+
 
 class SPS: public OPC
 {
@@ -110,6 +114,9 @@ class SPS: public OPC
 	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);
 };
 
+
+
+
 class R1: public OPC {													//The R1 runs on SPI Communication
 	private:
 	uint8_t SSpin;														//Slave Select pin for specification. The code will only run on the default SPI pins.
@@ -128,6 +135,8 @@ class R1: public OPC {													//The R1 runs on SPI Communication
 	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
 	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);													
 };
+
+
 
 class HPM: public OPC{
 	private:

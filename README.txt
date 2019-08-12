@@ -3,12 +3,6 @@ Optical Particle Counter Library (OPCSensor)
 University of Minnesota - Candler MURI, MNSGC High Altitude Ballooning Team
 Written Summer 2019
 
-
-
-----------Overview----------
-
-
-
 These are the files for the OPC library (OPCSensor.h). This will run any
 optical particle counters used for MURI that do not have independent logging capabilities.
 All particle counters will need to be run in loops of different speeds.
@@ -16,11 +10,18 @@ Serial begin must be called separately for systems that run through a serial por
 The library has been optimized for Teensy 3.5/3.6, but should work on any system.
 A count of total successful hits precedes the data from the sensors.
 
-The PMS 5003 runs the read data function as fast as possible, and can
+
+
+----------Sensor Overview----------
+
+
+
+
+The Plantower PMS 5003 runs the read data function as fast as possible, and can
 record new data every 2.3 seconds. The PMS5003 serial is 9600 baud. The Plantower has
 6 data points.
  
-The SPS 30 runs the read data function with the record data function, and
+The Sensirion SPS 30 runs the read data function with the record data function, and
 can record new data every 1 seconds. The SPS30 serial is 115200 baud. The
 SPS 30 is configured for UART communication. I2C communication is not supported.
 The SPS 30 has 10 data points.
@@ -30,7 +31,7 @@ and can record new data every 1 seconds. The R1 runs on SPI. As of the latest
 update, the R1 can only run on the primary SPI bus. The Alphasense R1 has 
 16 data points.
 
-The HPMA115S0-004 runs the read data function with the log update function,
+The Honeywell HPMA115S0-004 runs the read data function with the log update function,
 and can record new data every 1 seconds. The HPM serial is 9600 baud. The HPM
 has 4 data points.
 
@@ -61,6 +62,12 @@ Any other data from the sensors, such as particle counter statuses or other data
 
 Any questions, comments, or concerns should be directed towards Nathan Pharis <nathan.pharis@gmail.com> or
 the current library maintainer.
+
+The Plantower code is a modified version of code that a team member found on Github. The original source is not known.
+
+This code is written with the purpose of conducting high altitude ballooning experiments on micron level particles. As
+a result, some functions of the sensors have been discarded as unnecessary, or are not clearly laid out. Feel free to
+modify the code to suit your specific needs.
 
 
 

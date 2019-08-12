@@ -15,13 +15,15 @@ The SPS 30 runs the read data function with the log update function, and
 can record new data every 1 seconds.
 
 The Alphasense R1 runs the read data function with the log update function,
-and can record new data every 1 seconds. The R1 runs on SPI.*/
+and can record new data every 1 seconds. The R1 runs on SPI.
+
+The */
 
 #include "OPCSensor.h"
 
 
 
-//OPC//
+//////////OPC//////////
 
 
 
@@ -58,14 +60,14 @@ void OPC::getData(float dataPtr[], unsigned int arrayFill, unsigned int arraySta
 
 void OPC::setReset(unsigned long resetTimer){ resetTime = resetTimer; } //Manually set the length of the forced reset
 
-uint16_t OPC::bytes2int(byte LSB, byte MSB){							//Byte conversion to integers
+uint16_t OPC::bytes2int(byte LSB, byte MSB){							//Two byte conversion to integers
 	uint16_t val = ((MSB << 8) | LSB);
 	return val;
 }
 
 
 
-//PLANTOWER//
+//////////PLANTOWER//////////
 
 
 
@@ -83,9 +85,9 @@ String Plantower::logUpdate(){
     localDataLog += nTot;												//Log sample number, in flight time
     localDataLog += ",";  
     
-    if ((millis()-goodLogAge)>=logRate) goodLog = false;				//IF no good data is collected during a log, the log is bad. Explicit because of importance
+    if ((millis()-goodLogAge)>=logRate) badLog++;						//If no good data is collected during a log, the log is bad. Explicit because of importance
     
-    if (goodLog) {
+    if (badLog == 0) {
     localDataLog += PMSdata.particles_03um;                             //If data is in the buffer, log it
     localDataLog += "," + PMSdata.particles_05um;
     localDataLog += "," + PMSdata.particles_10um;
@@ -97,9 +99,7 @@ String Plantower::logUpdate(){
 	} else {
 		localDataLog += "-,-,-,-,-,-";
 		badLog++;                                                       //If there are five consecutive bad logs, the data string will print a warning
-		if (badLog >= 5){
-		localDataLog += "Error! " + String(badLog);
-		}
+		if (badLog >= 5) goodLog = false;
 		if ((millis()-goodLogAge)>=resetTime){							//For the plantower, a reset is just a long delay and a hope
 			delay(20000);
 			goodLogAge = millis();
@@ -176,7 +176,7 @@ void Plantower::getData(float dataPtr[], unsigned int arrayFill, unsigned int ar
 
 
 
-//SPS//
+//////////SPS//////////
 
 
 
@@ -389,7 +389,7 @@ void SPS::getData(float dataPtr[], unsigned int arrayFill, unsigned int arraySta
 
 
 
-//R1//
+//////////R1//////////
 
 
 
@@ -465,9 +465,9 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 			dataLogLocal += com[x];
 		}
 	} else {
-		 badLog ++;
+		badLog ++;
 		if (badLog >= 5) goodLog = false;								//Good log situation the same as in the Plantower code
-			dataLogLocal += ",-,-,-,-,-,-,-,-,-,-";						//If there is bad data, the string is populated with failure symbols.              
+		dataLogLocal += ",-,-,-,-,-,-,-,-,-,-";							//If there is bad data, the string is populated with failure symbols.              
 		if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
 			powerOff();													//the system will cycle and clean the dust bin.
 			delay (2000);
@@ -528,7 +528,7 @@ void R1::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStar
 
 
 
-//HPM//
+//////////HPM//////////
 
 
 
