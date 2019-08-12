@@ -35,6 +35,7 @@ class OPC																//Parent OPC class
 	Stream *s;															//Declares data IO stream
 	unsigned long goodLogAge;											//Age of the last good set of data
 	unsigned long resetTime;											//Age the last good log must reach to trigger a reset
+	uint16_t bytes2int(byte LSB, byte MSB);								//Convert given bytes to integers
 	
 	public:
 	OPC();
@@ -118,15 +119,31 @@ class R1: public OPC {													//The R1 runs on SPI Communication
 	
 	public:
 	R1(uint8_t slave);													//Alphasense constructor
-	void initOPC();														//Initializes the OPC
 	void powerOn();														//Power on will activate the fan, laser, and data communication
 	void powerOff();													//Power off will deactivate these same things
-	uint16_t bytes2int(byte LSB, byte MSB);								//Convert given bytes to integers
+	void initOPC();														//Initializes the OPC
 	String CSVHeader();													//Overrrides the OPC data functions
 	String logUpdate();
 	bool readData();
 	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
 	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);													
+};
+
+class HPM: public OPC{
+	private:
+	struct HPMdata{
+		uint16_t PM1_0, PM2_5, PM4_0, PM10_0, checksum, checksumR;		//Data structure
+	}localData;
+	
+	public:													
+	void powerOn();
+	void powerOff();
+	void initOPC();	
+	String CSVHeader();
+	String logUpdate();
+	bool readData();
+	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
+	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);	
 };
 
 #endif

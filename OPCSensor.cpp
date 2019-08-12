@@ -58,6 +58,11 @@ void OPC::getData(float dataPtr[], unsigned int arrayFill, unsigned int arraySta
 
 void OPC::setReset(unsigned long resetTimer){ resetTime = resetTimer; } //Manually set the length of the forced reset
 
+uint16_t OPC::bytes2int(byte LSB, byte MSB){							//Byte conversion to integers
+	uint16_t val = ((MSB << 8) | LSB);
+	return val;
+}
+
 
 
 //PLANTOWER//
@@ -247,17 +252,13 @@ String SPS::logUpdate(){                          				        //This function wi
    for(unsigned short k = 0; k<4; k++){                                 //This loop will populate the data string with mass concentrations.
       if (k==0) {
          dataLogLocal += ',' + String(m.MCF[k]) + ',';                  //Each bin from the sensor includes all of the particles from the bin
-        } else {                                                        //below it. This will show the number of particles that reside invidually
-         dataLogLocal += String(m.MCF[k]-m.MCF[k-1]) + ',';             //in each of the four bins.
+        } else {                                                        //below it.
+         dataLogLocal += String(m.MCF[k]) + ',';            		    
         }
    }
 
    for(unsigned short k = 0; k<5; k++){                                 //This loop will populate the data string with number concentrations.
-      if (k==0) {
         dataLogLocal += String(n.NCF[k]) + ',';
-      } else {                                          
-        dataLogLocal += String(n.NCF[k]-n.NCF[k-1]) + ',';              //These bins are compiled in the same manner as the mass bins.     
-      }
    }
     dataLogLocal += String(a.ASF);                                      //This adds the average particle size to the end of the bin.
     
@@ -451,11 +452,6 @@ String R1::CSVHeader(){													//Returns a data header in CSV formate
 	return header;
 }
 
-uint16_t R1::bytes2int(byte LSB, byte MSB){								//Byte conversion to integers
-	uint16_t val = ((MSB << 8) | LSB);
-	return val;
-}
-
 String R1::logUpdate(){													//If the log is successful, each bin will be logged.
 	String dataLogLocal = nTot;
 	if (readData()){
@@ -529,3 +525,63 @@ void R1::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStar
 		i++;
 	}
 }
+
+
+
+//HPM//
+
+
+
+HPM::HPM(Stream* ser) : OPC(ser) {}													
+
+void HPM::powerOn(){
+	
+}
+
+void HPM::powerOff(){
+	
+}
+
+void HPM::initOPC(){
+	
+}	
+
+String HPM::CSVHeader(){
+	String header = "hits,1um,2.5um,4.0um,10um";
+	return header;
+}
+
+String HPM::logUpdate(){
+	
+}
+
+bool HPM::readData(){
+	
+}
+
+void HPM::getData(float dataPtr[], unsigned int arrayFill){
+	
+}			
+
+void HPM::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
+	
+}	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
