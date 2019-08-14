@@ -74,8 +74,7 @@ String Plantower::CSVHeader(){											//Returns a data header in CSV formate
 }
 
 String Plantower::logUpdate(){
-	String localDataLog = "";															
-    localDataLog += nTot;												//Log sample number, in flight time
+	String localDataLog = nTot;											//Log sample number, in flight time																							
     localDataLog += ",";  
     
     if ((millis()-goodLogAge)>=logRate) goodLog = false;				//IF no good data is collected during a log, the log is bad. Explicit because of importance
@@ -93,7 +92,7 @@ String Plantower::logUpdate(){
 		localDataLog += "-,-,-,-,-,-";
 		badLog++;                                                       //If there are five consecutive bad logs, the data string will print a warning
 		if (badLog >= 5){
-		localDataLog += "Error! " + String(badLog);
+			goodLog = false;
 		}
 		if ((millis()-goodLogAge)>=resetTime){							//For the plantower, a reset is just a long delay and a hope
 			delay(20000);
@@ -447,7 +446,10 @@ void R1::initOPC(){
 }
 
 String R1::CSVHeader(){													//Returns a data header in CSV formate
-	String header = "hits,0.4um,0.7um,1.1um,1.5um,1.9um,2.4um,3um,4um,5um,6um,7um,8um,9um,10um,11um,12um,12.4um.";
+	String header = "hits,Bin1,Bin2,Bin3,Bin4,Bin5,Bin6,Bin7,Bin8,Bin9,";
+	header += "Bin10,Bin11,Bin12,Bin13,Bin14,Bin15,Bin16,Bin1 Time,Bin3 Time,";
+	header += "Bin5 Time,Bin7 Time,Flow Rate,Temp,Humidity,Sample Period,";
+	header += "PMA,PMB,PMC";
 	return header;
 }
 
@@ -464,14 +466,14 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
        badLog = 0;
        nTot++;
 	
-		for (int x = 0; x<16; x++){
+		for (int x = 0; x<27; x++){
 			dataLogLocal += ',';
 			dataLogLocal += com[x];
 		}
 	} else {
 		 badLog ++;
 		if (badLog >= 5) goodLog = false;								//Good log situation the same as in the Plantower code
-			dataLogLocal += ",-,-,-,-,-,-,-,-,-,-";						//If there is bad data, the string is populated with failure symbols.              
+			dataLogLocal += ",-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-";          
 		if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
 			powerOff();													//the system will cycle and clean the dust bin.
 			delay (2000);
@@ -493,18 +495,70 @@ bool R1::readData(){
 
 	if ((test[0] != 0x31)||(test[1] != 0xF3)) return false;
 										
-	delayMicroseconds(20);
+	delayMicroseconds(50);
   
 	for(int i = 0; i<64; i++)											//Raw data is collected for the 16 bins (16bits each)
 	{
 		raw[i] = SPI.transfer(0x30);
-		delayMicroseconds(20);
+		delayMicroseconds(50);
 	}
  
 	SPI.endTransaction();												//A checksum for the R1 that is indevelopnent.
 
-	for (int x=0; x<15; x++){											//The data is parse- two bits per pin
-		com[x] = bytes2int(raw[(x*2)], raw[(x*2+1)]);
+	for (int x=0; x<27; x++){											//The data is parse- two bits per pin
+		if (x<16) com[x] = bytes2int(raw[(x*2)], raw[(x*2+1)]);
+		if ((x>=16)&&(x<20)) com[x] = raw[x+16];
+				
+		if (x==20) {
+			unsigned short flip = 39;
+			for (unsigned short y = 0; y<4; y++){
+				sfr.SFRB[y] = raw[flip];
+				
+				flip--;
+			}
+			com[x] = sfr.SFRF;
+		}
+		if (x==21) com[x] = bytes2int(raw[40],raw[41]);
+		if (x==22) com[x] = bytes2int(raw[42],raw[43]);
+		if (x==23){
+			unsigned short flip = 47;
+			for (unsigned short y = 0; y<4; y++){
+				sp.SPB[y] = raw[flip];
+				
+				flip--;
+			}
+			com[x] = sp.SPF;
+		}
+		
+		if (x==24){
+			unsigned short flip = 53;
+			for (unsigned short y = 0; y<4; y++){
+				a.PMB[y] = raw[flip];
+				
+				flip--;
+			}
+			com[x] = a.PMF;
+		}
+		
+		if (x==25){
+			unsigned short flip = 57;
+			for (unsigned short y = 0; y<4; y++){
+				b.PMB[y] = raw[flip];
+				
+				flip--;
+			}
+			com[x] = b.PMF;
+		}
+		
+		if (x==26){
+			unsigned short flip = 61;
+			for (unsigned short y = 0; y<4; y++){
+				c.PMB[y] = raw[flip];
+				
+				flip--;
+			}
+			com[x] = c.PMF;
+		}
 	}
 	
 	return true;
@@ -513,7 +567,7 @@ bool R1::readData(){
 void R1::getData(float dataPtr[], unsigned int arrayFill){
 	unsigned int i = 0;
 	
-	while ((i<arrayFill)&&(i<16)){
+	while ((i<arrayFill)&&(i<27)){
 		dataPtr[i]=com[i];
 		
 		i++;
@@ -523,7 +577,7 @@ void R1::getData(float dataPtr[], unsigned int arrayFill){
 void R1::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
 	unsigned int i = arrayStart;
 	
-	while ((i<arrayFill)&&(i<16)){
+	while ((i<arrayFill)&&(i<27)){
 		dataPtr[i]=com[i];
 		
 		i++;

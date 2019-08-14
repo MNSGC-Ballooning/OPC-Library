@@ -114,7 +114,25 @@ class R1: public OPC {													//The R1 runs on SPI Communication
 	uint8_t SSpin;														//Slave Select pin for specification. The code will only run on the default SPI pins.
 	byte test[2];														//Data arrays
 	byte raw[64];
-	uint16_t com[16];
+	uint16_t com[27];
+	
+	union SFR                                                           //Defines the union for sample flow rate
+	{
+		byte SFRB[4];
+		float SFRF;
+	}sfr;
+	
+	union SP                                                            //Defines the union for sampling period
+	{
+		byte SPB[4];
+		float SPF;
+	}sp;
+	
+	union PM                                                            //Defines the union for PM bins A, B, and C
+	{
+		byte PMB[4];
+		float PMF;
+	}a,b,c;
 	
 	public:
 	R1(uint8_t slave);													//Alphasense constructor
