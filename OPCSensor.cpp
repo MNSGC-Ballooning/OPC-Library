@@ -74,22 +74,22 @@ String Plantower::CSVHeader(){											//Returns a data header in CSV formate
 }
 
 String Plantower::logUpdate(){
-	String localDataLog = nTot;											//Log sample number, in flight time																							
-    localDataLog += ",";  
+	String dataLogLocal = nTot;											//Log sample number, in flight time																							
+    dataLogLocal += ",";  
     
     if ((millis()-goodLogAge)>=logRate) goodLog = false;				//IF no good data is collected during a log, the log is bad. Explicit because of importance
     
     if (goodLog) {
-    localDataLog += PMSdata.particles_03um;                             //If data is in the buffer, log it
-    localDataLog += "," + PMSdata.particles_05um;
-    localDataLog += "," + PMSdata.particles_10um;
-    localDataLog += "," + PMSdata.particles_25um;
-    localDataLog += "," + PMSdata.particles_50um;
-    localDataLog += "," + PMSdata.particles_100um;
+    dataLogLocal += PMSdata.particles_03um;                             //If data is in the buffer, log it
+    dataLogLocal += "," + PMSdata.particles_05um;
+    dataLogLocal += "," + PMSdata.particles_10um;
+    dataLogLocal += "," + PMSdata.particles_25um;
+    dataLogLocal += "," + PMSdata.particles_50um;
+    dataLogLocal += "," + PMSdata.particles_100um;
     nTot += 1;                                                   	    //Total samples
 	
 	} else {
-		localDataLog += "-,-,-,-,-,-";
+		dataLogLocal += "-,-,-,-,-,-";
 		badLog++;                                                       //If there are five consecutive bad logs, the data string will print a warning
 		if (badLog >= 5){
 			goodLog = false;
@@ -99,7 +99,7 @@ String Plantower::logUpdate(){
 			goodLogAge = millis();
 		}
 	}
-  return localDataLog;
+  return dataLogLocal;
 }
 
 bool Plantower::readData(){												//Command that calls bytes from the plantower
@@ -130,16 +130,13 @@ bool Plantower::readData(){												//Command that calls bytes from the plant
     buffer_u16[i] += (buffer[2 + i*2] << 8);
   }
  
-  memcpy((void *)&PMSdata, (void *)buffer_u16, 30);						//Put it into a nice struct :)
  
-  if (sum != PMSdata.checksum) {										//if the checksum fails, return false
+   if (sum != PMSdata.checksum) {										//if the checksum fails, return false
     return false;
   }
-  
-  if ((String(PMSdata.particles_03um)=="")||((PMSdata.particles_03um==532)&&(String(PMSdata.particles_05um)==""))){
-	 return false;														//If the system returns no error but gets an error notification, return false
- }
 
+  memcpy((void *)&PMSdata, (void *)buffer_u16, 30);						//Put it into a nice struct :)
+ 
 	goodLog = true;														//goodLog is set to true of every good log
 	goodLogAge = millis();
 	badLog = 0;															//The badLog counter and the goodLogAge are both reset.
