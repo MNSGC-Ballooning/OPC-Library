@@ -16,7 +16,9 @@ can record new data every 1 seconds.
 
 The Alphasense R1 runs the read data function with the log update function,
 and can record new data every 1 seconds. The R1 runs on SPI.
- */
+
+The HPM runs the read data function with the log update function, and can
+record new data every 1 seconds.*/
 
 
 #ifndef OPCSensor_h
