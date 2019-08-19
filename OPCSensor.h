@@ -50,6 +50,8 @@ class OPC																//Parent OPC class
 	bool readData();
 	void getData(float dataPtr[], unsigned int arrayFill);
 	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);
+	void powerOn();
+	void powerOff();
 	void setReset(unsigned long resetTimer);							//Manually set the bad log reset timer
 };
 
@@ -68,8 +70,15 @@ class Plantower: public OPC
 	} PMSdata;
 	unsigned int logRate;
 	
+	void command(uint8_t CMD, uint8_t MODE);
+	
 	public:
-	Plantower(Stream* ser, unsigned int planLog);						//Plantower constructor
+	Plantower(Stream* ser, unsigned int logRate);						//Plantower constructor
+	void powerOn();
+	void powerOff();
+	void passiveMode();
+	void activeMode();
+	void initOPC();
 	String CSVHeader();													//Overrides of OPC data functions
 	String logUpdate();
 	bool readData();
@@ -124,7 +133,25 @@ class R1: public OPC {													//The R1 runs on SPI Communication
 	uint8_t SSpin;														//Slave Select pin for specification. The code will only run on the default SPI pins.
 	byte test[2];														//Data arrays
 	byte raw[64];
-	uint16_t com[16];
+	uint16_t com[27];
+	
+	union SFR                                                           //Defines the union for sample flow rate
+	{
+		byte SFRB[4];
+		float SFRF;
+	}sfr;
+	
+	union SP                                                            //Defines the union for sampling period
+	{
+		byte SPB[4];
+		float SPF;
+	}sp;
+	
+	union PM                                                            //Defines the union for PM bins A, B, and C
+	{
+		byte PMB[4];
+		float PMF;
+	}a,b,c;
 	
 	public:
 	R1(uint8_t slave);													//Alphasense constructor

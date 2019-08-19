@@ -59,6 +59,10 @@ void OPC::getData(float dataPtr[], unsigned int arrayFill){}
 
 void OPC::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){}
 
+void OPC::powerOn(){}
+
+void OPC::powerOff(){}
+
 void OPC::setReset(unsigned long resetTimer){ resetTime = resetTimer; } //Manually set the length of the forced reset
 
 uint16_t OPC::bytes2int(byte LSB, byte MSB){							//Two byte conversion to integers
@@ -72,9 +76,62 @@ uint16_t OPC::bytes2int(byte LSB, byte MSB){							//Two byte conversion to inte
 
 
 
-Plantower::Plantower(Stream* ser, unsigned int planLog) : OPC(ser) {	//Plantower constructor- contains the log rate and the plantower stream
-		logRate = planLog;
-	}
+void Plantower::command(byte CMD, byte Mode){
+	uint16_t verify = 0x42 + 0x4d + CMD + 0x00 + Mode;
+	uint8_t LRCH, LRCL;
+	
+	LRCL = (verify & 0xff);
+	LRCH = (verify >> 8);
+	
+	s->write(0x42);
+	s->write(0x4d);
+	s->write(CMD);
+	s->write((byte)0x00);
+	s->write(Mode);
+	s->write((byte)LRCH);
+	s->write((byte)LRCL);	
+}
+
+Plantower::Plantower(Stream* ser, unsigned int planLog) : OPC(ser){ 	//Plantower constructor- contains the log rate and the plantower stream
+	logRate = planLog;
+}
+	
+	
+void Plantower::powerOn(){
+	command(0xe4,0x01);
+	
+	delay(20);
+	for (unsigned short i=0; i<8; i++) s->read();
+}
+
+void Plantower::powerOff(){
+	command(0xe4,0x00);
+	
+	delay(20);
+	for (unsigned short i=0; i<8; i++) s->read();
+}
+
+void Plantower::passiveMode(){
+	command(0xe1,0x00);
+
+	delay(20);
+	for (unsigned short i=0; i<8; i++) s->read();
+}
+
+void Plantower::activeMode(){
+	command(0xe1, 0x01);
+	
+	delay(20);
+	for (unsigned short i=0; i<8; i++) s->read();
+}
+
+void Plantower::initOPC(){
+	OPC::initOPC();
+	
+	powerOn();
+	delay(100);
+	activeMode();
+}
 	
 String Plantower::CSVHeader(){											//Returns a data header in CSV formate
 	String header = "hits,03um,05um,10um,25um,50um,100um";
@@ -82,35 +139,39 @@ String Plantower::CSVHeader(){											//Returns a data header in CSV formate
 }
 
 String Plantower::logUpdate(){
-	String localDataLog = "";															
-    localDataLog += nTot;												//Log sample number, in flight time
-    localDataLog += ",";  
+
+	String dataLogLocal = "";											//Log sample number, in flight time																							
+    dataLogLocal += String(nTot) + ",";  
     
-    if ((millis()-goodLogAge)>=logRate) badLog++;						//If no good data is collected during a log, the log is bad. Explicit because of importance
-    
-    if (badLog == 0) {
-    localDataLog += PMSdata.particles_03um;                             //If data is in the buffer, log it
-    localDataLog += "," + PMSdata.particles_05um;
-    localDataLog += "," + PMSdata.particles_10um;
-    localDataLog += "," + PMSdata.particles_25um;
-    localDataLog += "," + PMSdata.particles_50um;
-    localDataLog += "," + PMSdata.particles_100um;
-    nTot += 1;                                                   	    //Total samples
+    if ((millis()-goodLogAge <= logRate)&&goodLog) {
+    dataLogLocal += String(PMSdata.particles_03um);                     //If data is in the buffer, log it
+    dataLogLocal += "," + String(PMSdata.particles_05um);
+    dataLogLocal += "," + String(PMSdata.particles_10um);
+    dataLogLocal += "," + String(PMSdata.particles_25um);
+    dataLogLocal += "," + String(PMSdata.particles_50um);
+    dataLogLocal += "," + String(PMSdata.particles_100um);
+    nTot ++;                                                   		    //Total samples
+
 	
 	} else {
-		localDataLog += "-,-,-,-,-,-";
+		dataLogLocal += "-,-,-,-,-,-";
 		badLog++;                                                       //If there are five consecutive bad logs, the data string will print a warning
-		if (badLog >= 5) goodLog = false;
+		if (badLog >= 5){
+			goodLog = false;
+		}
+
 		if ((millis()-goodLogAge)>=resetTime){							//For the plantower, a reset is just a long delay and a hope
-			delay(20000);
-			goodLogAge = millis();
+		powerOff();
+		delay(20000);
+		powerOn();
+		goodLogAge = millis();
 		}
 	}
-  return localDataLog;
+  return dataLogLocal;
 }
 
 bool Plantower::readData(){												//Command that calls bytes from the plantower
-	  if (! s->available()) {
+  if (! s->available()) {
     return false;
   }
   
@@ -140,12 +201,9 @@ bool Plantower::readData(){												//Command that calls bytes from the plant
   memcpy((void *)&PMSdata, (void *)buffer_u16, 30);						//Put it into a nice struct :)
  
   if (sum != PMSdata.checksum) {										//if the checksum fails, return false
+    goodLog = false;
     return false;
   }
-  
-  if ((String(PMSdata.particles_03um)=="")||((PMSdata.particles_03um==532)&&(String(PMSdata.particles_05um)==""))){
-	 return false;														//If the system returns no error but gets an error notification, return false
- }
 
 	goodLog = true;														//goodLog is set to true of every good log
 	goodLogAge = millis();
@@ -155,7 +213,7 @@ bool Plantower::readData(){												//Command that calls bytes from the plant
 
 void Plantower::getData(float dataPtr[], unsigned int arrayFill){
 	unsigned int i = 0;
-	float dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
+	uint32_t dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
 	
 	while ((i<arrayFill)&&(i<6)){
 		dataPtr[i]=dataArray[i];
@@ -166,7 +224,7 @@ void Plantower::getData(float dataPtr[], unsigned int arrayFill){
 
 void Plantower::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
 	unsigned int i = arrayStart;
-	float dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
+	uint32_t dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
 	
 	while ((i<arrayFill)&&(i<6)){		
 		dataPtr[i]=dataArray[i];
@@ -233,8 +291,7 @@ void SPS::initOPC()                            			  		        //SPS initializati
 	
     powerOn();                                       	                //Sends SPS active measurement command
     delay(100);
-    clean();                                              		        //Sends fan clean command. This takes 10 seconds. Then, an additional 10 seconds
-    delay(20500);                                                       //are taken to get a clean, consistent flow through the system.
+    clean();                                              		        //Sends fan clean command.
 }
 
 String SPS::CSVHeader(){												//Returns a data header in CSV formate
@@ -443,13 +500,15 @@ void R1::initOPC(){
 	OPC::initOPC();														//Calls original init
 
 	SPI.begin();        											 	//Intialize SPI in Arduino
-	delay(5000);
+	delay(1000);
 	powerOn();
-	delay(5000); 														//Delay to allow fans to reach operating speed
 }
 
 String R1::CSVHeader(){													//Returns a data header in CSV formate
-	String header = "hits,0.4um,0.7um,1.1um,1.5um,1.9um,2.4um,3um,4um,5um,6um,7um,8um,9um,10um,11um,12um,12.4um.";
+	String header = "hits,Bin1,Bin2,Bin3,Bin4,Bin5,Bin6,Bin7,Bin8,Bin9,";
+	header += "Bin10,Bin11,Bin12,Bin13,Bin14,Bin15,Bin16,Bin1 Time,Bin3 Time,";
+	header += "Bin5 Time,Bin7 Time,Flow Rate,Temp,Humidity,Sample Period,";
+	header += "PMA,PMB,PMC";
 	return header;
 }
 
@@ -461,14 +520,15 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
        badLog = 0;
        nTot++;
 	
-		for (int x = 0; x<16; x++){
+		for (int x = 0; x<27; x++){
 			dataLogLocal += ',';
 			dataLogLocal += com[x];
 		}
 	} else {
 		badLog ++;
 		if (badLog >= 5) goodLog = false;								//Good log situation the same as in the Plantower code
-		dataLogLocal += ",-,-,-,-,-,-,-,-,-,-";							//If there is bad data, the string is populated with failure symbols.              
+		dataLogLocal += ",-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-";	//If there is bad data, the string is populated with failure symbols.                   
+
 		if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
 			powerOff();													//the system will cycle and clean the dust bin.
 			delay (2000);
@@ -490,18 +550,70 @@ bool R1::readData(){
 
 	if ((test[0] != 0x31)||(test[1] != 0xF3)) return false;
 										
-	delayMicroseconds(20);
+	delayMicroseconds(50);
   
 	for(int i = 0; i<64; i++)											//Raw data is collected for the 16 bins (16bits each)
 	{
 		raw[i] = SPI.transfer(0x30);
-		delayMicroseconds(20);
+		delayMicroseconds(50);
 	}
  
 	SPI.endTransaction();												//A checksum for the R1 that is indevelopnent.
 
-	for (int x=0; x<15; x++){											//The data is parse- two bits per pin
-		com[x] = bytes2int(raw[(x*2)], raw[(x*2+1)]);
+	for (int x=0; x<27; x++){											//The data is parse- two bits per pin
+		if (x<16) com[x] = bytes2int(raw[(x*2)], raw[(x*2+1)]);
+		if ((x>=16)&&(x<20)) com[x] = raw[x+16];
+				
+		if (x==20) {
+			unsigned short flip = 39;
+			for (unsigned short y = 0; y<4; y++){
+				sfr.SFRB[y] = raw[flip];
+				
+				flip--;
+			}
+			com[x] = sfr.SFRF;
+		}
+		if (x==21) com[x] = bytes2int(raw[40],raw[41]);
+		if (x==22) com[x] = bytes2int(raw[42],raw[43]);
+		if (x==23){
+			unsigned short flip = 47;
+			for (unsigned short y = 0; y<4; y++){
+				sp.SPB[y] = raw[flip];
+				
+				flip--;
+			}
+			com[x] = sp.SPF;
+		}
+		
+		if (x==24){
+			unsigned short flip = 53;
+			for (unsigned short y = 0; y<4; y++){
+				a.PMB[y] = raw[flip];
+				
+				flip--;
+			}
+			com[x] = a.PMF;
+		}
+		
+		if (x==25){
+			unsigned short flip = 57;
+			for (unsigned short y = 0; y<4; y++){
+				b.PMB[y] = raw[flip];
+				
+				flip--;
+			}
+			com[x] = b.PMF;
+		}
+		
+		if (x==26){
+			unsigned short flip = 61;
+			for (unsigned short y = 0; y<4; y++){
+				c.PMB[y] = raw[flip];
+				
+				flip--;
+			}
+			com[x] = c.PMF;
+		}
 	}
 	
 	return true;
@@ -510,7 +622,7 @@ bool R1::readData(){
 void R1::getData(float dataPtr[], unsigned int arrayFill){
 	unsigned int i = 0;
 	
-	while ((i<arrayFill)&&(i<16)){
+	while ((i<arrayFill)&&(i<27)){
 		dataPtr[i]=com[i];
 		
 		i++;
@@ -520,7 +632,7 @@ void R1::getData(float dataPtr[], unsigned int arrayFill){
 void R1::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
 	unsigned int i = arrayStart;
 	
-	while ((i<arrayFill)&&(i<16)){
+	while ((i<arrayFill)&&(i<27)){
 		dataPtr[i]=com[i];
 		
 		i++;

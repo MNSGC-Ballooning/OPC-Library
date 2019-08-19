@@ -69,6 +69,9 @@ This code is written with the purpose of conducting high altitude ballooning exp
 a result, some functions of the sensors have been discarded as unnecessary, or are not clearly laid out. Feel free to
 modify the code to suit your specific needs.
 
+Data from the first 30 seconds of powering on the sensors will not be reliable,
+because the fans must reach operating speed.
+
 
 
 ----------Commands for OPCSensor Library----------
@@ -79,6 +82,8 @@ All OPC:
  - construct with a reference to the serial port name (&serialName), and separately begin the serial connection.
  - .getTot() - returns total number of hits (int)
  - .getLogQuality() - returns the quality of the log (bool)
+ - .powerOn() - used to start full system (void) (called by initOPC)
+ - .powerOff() - used to end measurements (void)
  - .initOPC() - will initialize the OPC (void)
  - .CSVHeader() - will provide a header for the logUpdate data string (String)
  - .logUpdate() - will return a data string in CSV format (String)
@@ -90,18 +95,13 @@ All OPC:
 
 Classes:
 Plantower
-- add an additional log rate in milliseconds as a second parameter to the constructor
+- .passiveMode() - will require requests from the microcontroller to send data. (Not functional)
+- .activeMode() - will spam data like there is no tomorrow
 
 SPS
-- .powerOn() - used to start measurements (void) (called by initOPC)
-- .powerOff() - used to end measurements (void)
 - .clean() - used to clean the system (void) (called by initOPC)
 
 R1
 - constructed with a slave pin instead of a serial line
-- .powerOn() - used to start full system (void) (called by initOPC)
-- .powerOff() - used to end measurements (void)
 
 HPM
-- .powerOn() - used to turn on the system and to start measurements (void) (called by initOPC)
-- .powerOff() - used to end measurements and to turn off the system (void)
