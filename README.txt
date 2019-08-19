@@ -42,6 +42,9 @@ With every other OPC, logUpdate will call readData automatically.
 
 The data is passed from getData through a float array.
 
+Data from the first 30 seconds of powering on the sensors will not be reliable,
+because the fans must reach operating speed.
+
 
 
 ----------Commands for OPCSensor Library----------
@@ -62,14 +65,12 @@ All OPC:
 
 Classes:
 Plantower
-- add an additional log rate in milliseconds as a second parameter to the constructor
+- .passiveMode() - will require requests from the microcontroller to send data.
+- .activeMode() - will spam data like there is no tomorrow (not configured)
 
 SPS
-- .powerOn() - used to start measurements (void) (called by initOPC)
-- .powerOff() - used to end measurements (void)
 - .clean() - used to clean the system (void) (called by initOPC)
 
 R1
 - constructed with a slave pin instead of a serial line
-- .powerOn() - used to start full system (void) (called by initOPC)
-- .powerOff() - used to end measurements (void)
+

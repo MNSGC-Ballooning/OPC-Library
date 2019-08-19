@@ -47,6 +47,8 @@ class OPC																//Parent OPC class
 	bool readData();
 	void getData(float dataPtr[], unsigned int arrayFill);
 	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);
+	void powerOn();
+	void powerOff();
 	void setReset(unsigned long resetTimer);							//Manually set the bad log reset timer
 };
 
@@ -63,8 +65,15 @@ class Plantower: public OPC
 	} PMSdata;
 	unsigned int logRate;
 	
+	void command(uint8_t CMD, uint8_t MODE);
+	
 	public:
-	Plantower(Stream* ser, unsigned int planLog);						//Plantower constructor
+	Plantower(Stream* ser, unsigned int logRate);						//Plantower constructor
+	void powerOn();
+	void powerOff();
+	void passiveMode();
+	void activeMode();
+	void initOPC();
 	String CSVHeader();													//Overrides of OPC data functions
 	String logUpdate();
 	bool readData();

@@ -56,6 +56,10 @@ void OPC::getData(float dataPtr[], unsigned int arrayFill){}
 
 void OPC::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){}
 
+void OPC::powerOn(){}
+
+void OPC::powerOff(){}
+
 void OPC::setReset(unsigned long resetTimer){ resetTime = resetTimer; } //Manually set the length of the forced reset
 
 
@@ -64,9 +68,62 @@ void OPC::setReset(unsigned long resetTimer){ resetTime = resetTimer; } //Manual
 
 
 
-Plantower::Plantower(Stream* ser, unsigned int planLog) : OPC(ser) {	//Plantower constructor- contains the log rate and the plantower stream
-		logRate = planLog;
-	}
+void Plantower::command(byte CMD, byte Mode){
+	uint16_t verify = 0x42 + 0x4d + CMD + 0x00 + Mode;
+	uint8_t LRCH, LRCL;
+	
+	LRCL = (verify & 0xff);
+	LRCH = (verify >> 8);
+	
+	s->write(0x42);
+	s->write(0x4d);
+	s->write(CMD);
+	s->write((byte)0x00);
+	s->write(Mode);
+	s->write((byte)LRCH);
+	s->write((byte)LRCL);	
+}
+
+Plantower::Plantower(Stream* ser, unsigned int planLog) : OPC(ser){ 	//Plantower constructor- contains the log rate and the plantower stream
+	logRate = planLog;
+}
+	
+	
+void Plantower::powerOn(){
+	command(0xe4,0x01);
+	
+	delay(20);
+	for (unsigned short i=0; i<8; i++) s->read();
+}
+
+void Plantower::powerOff(){
+	command(0xe4,0x00);
+	
+	delay(20);
+	for (unsigned short i=0; i<8; i++) s->read();
+}
+
+void Plantower::passiveMode(){
+	command(0xe1,0x00);
+
+	delay(20);
+	for (unsigned short i=0; i<8; i++) s->read();
+}
+
+void Plantower::activeMode(){
+	command(0xe1, 0x01);
+	
+	delay(20);
+	for (unsigned short i=0; i<8; i++) s->read();
+}
+
+void Plantower::initOPC(){
+	OPC::initOPC();
+	
+	powerOn();
+	delay(100);
+	activeMode();
+}
 	
 String Plantower::CSVHeader(){											//Returns a data header in CSV formate
 	String header = "hits,03um,05um,10um,25um,50um,100um";
@@ -74,19 +131,17 @@ String Plantower::CSVHeader(){											//Returns a data header in CSV formate
 }
 
 String Plantower::logUpdate(){
-	String dataLogLocal = nTot;											//Log sample number, in flight time																							
-    dataLogLocal += ",";  
+	String dataLogLocal = "";											//Log sample number, in flight time																							
+    dataLogLocal += String(nTot) + ",";  
     
-    if ((millis()-goodLogAge)>=logRate) goodLog = false;				//IF no good data is collected during a log, the log is bad. Explicit because of importance
-    
-    if (goodLog) {
-    dataLogLocal += PMSdata.particles_03um;                             //If data is in the buffer, log it
-    dataLogLocal += "," + PMSdata.particles_05um;
-    dataLogLocal += "," + PMSdata.particles_10um;
-    dataLogLocal += "," + PMSdata.particles_25um;
-    dataLogLocal += "," + PMSdata.particles_50um;
-    dataLogLocal += "," + PMSdata.particles_100um;
-    nTot += 1;                                                   	    //Total samples
+    if ((millis()-goodLogAge <= logRate)&&goodLog) {
+    dataLogLocal += String(PMSdata.particles_03um);                     //If data is in the buffer, log it
+    dataLogLocal += "," + String(PMSdata.particles_05um);
+    dataLogLocal += "," + String(PMSdata.particles_10um);
+    dataLogLocal += "," + String(PMSdata.particles_25um);
+    dataLogLocal += "," + String(PMSdata.particles_50um);
+    dataLogLocal += "," + String(PMSdata.particles_100um);
+    nTot ++;                                                   		    //Total samples
 	
 	} else {
 		dataLogLocal += "-,-,-,-,-,-";
@@ -95,15 +150,17 @@ String Plantower::logUpdate(){
 			goodLog = false;
 		}
 		if ((millis()-goodLogAge)>=resetTime){							//For the plantower, a reset is just a long delay and a hope
-			delay(20000);
-			goodLogAge = millis();
+		powerOff();
+		delay(20000);
+		powerOn();
+		goodLogAge = millis();
 		}
 	}
   return dataLogLocal;
 }
 
 bool Plantower::readData(){												//Command that calls bytes from the plantower
-	  if (! s->available()) {
+  if (! s->available()) {
     return false;
   }
   
@@ -130,22 +187,27 @@ bool Plantower::readData(){												//Command that calls bytes from the plant
     buffer_u16[i] += (buffer[2 + i*2] << 8);
   }
  
+  memcpy((void *)&PMSdata, (void *)buffer_u16, 30);						//Put it into a nice struct :)
  
-   if (sum != PMSdata.checksum) {										//if the checksum fails, return false
+  if (sum != PMSdata.checksum) {										//if the checksum fails, return false
+    Serial.println("Bad Checksum!");
+    goodLog = false;
     return false;
   }
 
-  memcpy((void *)&PMSdata, (void *)buffer_u16, 30);						//Put it into a nice struct :)
- 
+	Serial.println("Good Read!");
 	goodLog = true;														//goodLog is set to true of every good log
 	goodLogAge = millis();
 	badLog = 0;															//The badLog counter and the goodLogAge are both reset.
+
+    Serial.println("\n\n\n\n\n\n\n\n" + String(PMSdata.particles_03um) + "," + String(PMSdata.particles_05um) + "," + String(PMSdata.particles_10um) + "," + String(PMSdata.particles_25um) + "," + String(PMSdata.particles_50um) + "," + String(PMSdata.particles_100um));
+
   return true;
 }
 
 void Plantower::getData(float dataPtr[], unsigned int arrayFill){
 	unsigned int i = 0;
-	float dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
+	uint32_t dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
 	
 	while ((i<arrayFill)&&(i<6)){
 		dataPtr[i]=dataArray[i];
@@ -156,7 +218,7 @@ void Plantower::getData(float dataPtr[], unsigned int arrayFill){
 
 void Plantower::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
 	unsigned int i = arrayStart;
-	float dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
+	uint32_t dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
 	
 	while ((i<arrayFill)&&(i<6)){		
 		dataPtr[i]=dataArray[i];
@@ -223,8 +285,7 @@ void SPS::initOPC()                            			  		        //SPS initializati
 	
     powerOn();                                       	                //Sends SPS active measurement command
     delay(100);
-    clean();                                              		        //Sends fan clean command. This takes 10 seconds. Then, an additional 10 seconds
-    delay(20500);                                                       //are taken to get a clean, consistent flow through the system.
+    clean();                                              		        //Sends fan clean command.
 }
 
 String SPS::CSVHeader(){												//Returns a data header in CSV formate
@@ -437,9 +498,8 @@ void R1::initOPC(){
 	OPC::initOPC();														//Calls original init
 
 	SPI.begin();        											 	//Intialize SPI in Arduino
-	delay(5000);
+	delay(1000);
 	powerOn();
-	delay(5000); 														//Delay to allow fans to reach operating speed
 }
 
 String R1::CSVHeader(){													//Returns a data header in CSV formate
