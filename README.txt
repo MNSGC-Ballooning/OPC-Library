@@ -16,7 +16,6 @@ A count of total successful hits precedes the data from the sensors.
 
 
 
-
 The Plantower PMS 5003 runs the read data function as fast as possible, and can
 record new data every 2.3 seconds. The PMS5003 serial is 9600 baud. The Plantower has
 6 data points.
