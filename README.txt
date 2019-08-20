@@ -88,20 +88,23 @@ All OPC:
  - .CSVHeader() - will provide a header for the logUpdate data string (String)
  - .logUpdate() - will return a data string in CSV format (String)
  - .readData() - will read the data and return a bool indicating success (bool)
- - .getData(array, arraySize) - will save data as floats into the passed arrays
- - .getData(array, arraySize, arrayStart) - will save data as floats into passed arrays starting at the array start
- - .setReset(int) - will manually set the automatic bad log reset time. (void) The default is 20 minutes of constantly poor logging. This will cause a time delay 
+ - .getData(array, arraySize) - will save data as floats into the passed arrays (void)
+ - .getData(array, arraySize, arrayStart) - will save data as floats into passed arrays starting deeper in both the data and the provided array (void)
+ - .setReset(int) - will manually set the automatic bad log reset time (void). The default is 20 minutes of constantly poor logging. This will cause a time delay 
 					of approximately 20 seconds in the code operation.
 
 Classes:
 Plantower
-- .passiveMode() - will require requests from the microcontroller to send data. (Not functional)
-- .activeMode() - will spam data like there is no tomorrow
+- constructed with an additional unsigned integer representing the log rate in milliseconds.
+- .passiveMode() - will require requests from the microcontroller to send data (void) (Not functional)
+- .activeMode() - will spam data like there is no tomorrow (void)
 
 SPS
 - .clean() - used to clean the system (void) (called by initOPC)
 
 R1
-- constructed with a slave pin instead of a serial line
+- constructed with a slave pin instead of a serial line.
 
 HPM
+- .autoSendOn() - will automatically send data to the microcontroller (void) (Not configured with logUpdate, must call readData as fast as possible)
+- .autoSendOff() - will take requests from the microcontroller to send data (void) (Recommended) (called by initOPC)

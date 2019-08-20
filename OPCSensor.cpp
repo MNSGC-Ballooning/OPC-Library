@@ -160,7 +160,7 @@ String Plantower::logUpdate(){
 			goodLog = false;
 		}
 
-		if ((millis()-goodLogAge)>=resetTime){							//For the plantower, a reset is just a long delay and a hope
+		if ((millis()-goodLogAge)>=resetTime){							//System reset if the reset time is tripped
 		powerOff();
 		delay(20000);
 		powerOn();
@@ -211,11 +211,11 @@ bool Plantower::readData(){												//Command that calls bytes from the plant
   return true;
 }
 
-void Plantower::getData(float dataPtr[], unsigned int arrayFill){
+void Plantower::getData(float dataPtr[], unsigned int arrayFill){		//Will populate data into a provided array
 	unsigned int i = 0;
 	uint32_t dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
 	
-	while ((i<arrayFill)&&(i<6)){
+	while ((i<arrayFill)&&(i<6)){										//Will fill array or provide all data, whichever comes first
 		dataPtr[i]=dataArray[i];
 		
 		i++;
@@ -223,11 +223,11 @@ void Plantower::getData(float dataPtr[], unsigned int arrayFill){
 }
 
 void Plantower::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
-	unsigned int i = arrayStart;
+	unsigned int i = arrayStart;										//Same process as above, but a starting point in the external array can be chosen
 	uint32_t dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
 	
-	while ((i<arrayFill)&&(i<6)){		
-		dataPtr[i]=dataArray[i];
+	while ((i<arrayFill)&&((i-arrayStart)<6)){		
+		dataPtr[i]=dataArray[i-arrayStart];
 		
 		i++;
 	}
@@ -300,7 +300,7 @@ String SPS::CSVHeader(){												//Returns a data header in CSV formate
 }
 
 String SPS::logUpdate(){                          				        //This function will parse the data and form loggable strings.
-    String dataLogLocal = nTot;   
+    String dataLogLocal = String(nTot);   
     if (readData()){                                                    //Read the data and determine the read success.
        goodLog = true;                                                  //This will establish the good log inidicators.
        goodLogAge = millis();
@@ -423,12 +423,12 @@ byte stuffByte = 0;
   return true;                                                          //If the reading is successful, the function will return true.
 }
 
-void SPS::getData(float dataPtr[], unsigned int arrayFill){
-	unsigned int i = 0;
+void SPS::getData(float dataPtr[], unsigned int arrayFill){				//Populate an array with the collected data
+	unsigned int i = 0;													//Below, an array is populated with particle data
 	float dataArray[10] = {m.MCF[0],m.MCF[1],m.MCF[2],m.MCF[3],n.NCF[0],n.NCF[1],n.NCF[2],n.NCF[3],n.NCF[4],a.ASF};
 	
 	while ((i<arrayFill)&&(i<10)){
-		dataPtr[i]=dataArray[i];
+		dataPtr[i]=dataArray[i];										//particle data is passed to external array
 		
 		i++;
 	}
@@ -438,8 +438,8 @@ void SPS::getData(float dataPtr[], unsigned int arrayFill, unsigned int arraySta
 	unsigned int i = arrayStart;
 	float dataArray[10] = {m.MCF[0],m.MCF[1],m.MCF[2],m.MCF[3],n.NCF[0],n.NCF[1],n.NCF[2],n.NCF[3],n.NCF[4],a.ASF};
 	
-	while ((i<arrayFill)&&(i<10)){
-		dataPtr[i]=dataArray[i];
+	while ((i<arrayFill)&&((i-arrayStart)<10){
+		dataPtr[i]=dataArray[i-arrayStart];								//The process is the same as above, but you can pass data later into the input array
 		
 		i++;
 	}
@@ -513,7 +513,7 @@ String R1::CSVHeader(){													//Returns a data header in CSV formate
 }
 
 String R1::logUpdate(){													//If the log is successful, each bin will be logged.
-	String dataLogLocal = nTot;
+	String dataLogLocal = String(nTot);
 	if (readData()){
 	   goodLog = true;                                                  
        goodLogAge = millis();
@@ -522,13 +522,13 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 	
 		for (int x = 0; x<27; x++){
 			dataLogLocal += ',';
-			dataLogLocal += com[x];
+			dataLogLocal += String(com[x]);
 		}
 	} else {
 		badLog ++;
 		if (badLog >= 5) goodLog = false;								//Good log situation the same as in the Plantower code
-		dataLogLocal += ",-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-";	//If there is bad data, the string is populated with failure symbols.                   
-
+		dataLogLocal += ",-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-";	                   
+																		//If there is bad data, the string is populated with failure symbols.
 		if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
 			powerOff();													//the system will cycle and clean the dust bin.
 			delay (2000);
@@ -564,8 +564,8 @@ bool R1::readData(){
 		if (x<16) com[x] = bytes2int(raw[(x*2)], raw[(x*2+1)]);
 		if ((x>=16)&&(x<20)) com[x] = raw[x+16];
 				
-		if (x==20) {
-			unsigned short flip = 39;
+		if (x==20) {													//If bytes are in a union, the need to be flipped
+			unsigned short flip = 39;									//unions are used to turn four bytes into a float
 			for (unsigned short y = 0; y<4; y++){
 				sfr.SFRB[y] = raw[flip];
 				
@@ -573,11 +573,11 @@ bool R1::readData(){
 			}
 			com[x] = sfr.SFRF;
 		}
-		if (x==21) com[x] = bytes2int(raw[40],raw[41]);
+		if (x==21) com[x] = bytes2int(raw[40],raw[41]);					//turns two bytes into a uint16_t
 		if (x==22) com[x] = bytes2int(raw[42],raw[43]);
 		if (x==23){
 			unsigned short flip = 47;
-			for (unsigned short y = 0; y<4; y++){
+			for (unsigned short y = 0; y<4; y++){						//More flips
 				sp.SPB[y] = raw[flip];
 				
 				flip--;
@@ -587,7 +587,7 @@ bool R1::readData(){
 		
 		if (x==24){
 			unsigned short flip = 53;
-			for (unsigned short y = 0; y<4; y++){
+			for (unsigned short y = 0; y<4; y++){						//More flips
 				a.PMB[y] = raw[flip];
 				
 				flip--;
@@ -597,7 +597,7 @@ bool R1::readData(){
 		
 		if (x==25){
 			unsigned short flip = 57;
-			for (unsigned short y = 0; y<4; y++){
+			for (unsigned short y = 0; y<4; y++){						//More flips
 				b.PMB[y] = raw[flip];
 				
 				flip--;
@@ -607,7 +607,7 @@ bool R1::readData(){
 		
 		if (x==26){
 			unsigned short flip = 61;
-			for (unsigned short y = 0; y<4; y++){
+			for (unsigned short y = 0; y<4; y++){						//More flips
 				c.PMB[y] = raw[flip];
 				
 				flip--;
@@ -619,7 +619,7 @@ bool R1::readData(){
 	return true;
 }
 
-void R1::getData(float dataPtr[], unsigned int arrayFill){
+void R1::getData(float dataPtr[], unsigned int arrayFill){				//This fills an array with the data instead of using CSV format
 	unsigned int i = 0;
 	
 	while ((i<arrayFill)&&(i<27)){
@@ -630,10 +630,10 @@ void R1::getData(float dataPtr[], unsigned int arrayFill){
 }
 
 void R1::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
-	unsigned int i = arrayStart;
+	unsigned int i = arrayStart;										//This allows you to fill with the latter parts of the data
 	
-	while ((i<arrayFill)&&(i<27)){
-		dataPtr[i]=com[i];
+	while ((i<arrayFill)&&((i-arrayStart)<27)){							//Data cannot fill past the size of the array or the total amount of potential data
+		dataPtr[i]=com[i-arrayStart];
 		
 		i++;
 	}
@@ -645,56 +645,211 @@ void R1::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStar
 
 
 
-HPM::HPM(Stream* ser) : OPC(ser) {}													
+HPM::HPM(Stream* ser) : OPC(ser) {}										//Constructor	
 
-void HPM::powerOn(){
-	
+bool HPM::command(byte cmd, byte chk){									//Command system, will return true if command successful
+  byte checkIt[2] = {0};
+  unsigned short attempt = 0;
+  
+  do{																	//Will send the  command until the maximum
+  attempt++;															//number of attempts are reached or the proper bytes are
+  s->write(0x68);														//returned
+  s->write(0x01);
+  s->write(cmd);
+  s->write(chk);
+
+  delay(50);
+  checkIt[0] = s->read();
+  checkIt[1] = s->read();
+
+  } while ((attempt < 50)&&(!((checkIt[0] == 0xA5)&&(checkIt[1] == 0xA5))));
+  if ((checkIt[0] == 0xA5)&&(checkIt[1] == 0xA5)){
+	  return true;
+  } else {
+	  return false;
+  }
+}									
+
+void HPM::powerOn(){													//Power on
+  command(0x01,0x96);
 }
 
-void HPM::powerOff(){
-	
+void HPM::powerOff(){													//Power off
+  command(0x02,0x95);
 }
 
-void HPM::initOPC(){
-	
+void HPM::autoSendOn(){													//Auto send on
+  if(command(0x40,0x57)){												//When this is active, the HPM will automatically send data.
+	  autoSend = true;													//This is off by default.
+  }
+}
+
+void HPM::autoSendOff(){												//Auto send off
+  if(command(0x20,0x77){												//This setting is recommended, and has been successfully tested.
+	  autoSend = false;
+  }
+}
+
+void HPM::initOPC(){													//System initialization
+	OPC::initOPC();
+	autoSend = true;
+		
+	powerOn();															//Will turn on particle detector
+	delay(100);
+	autoSendOff();														//Will turn off auto sending of data.
 }	
 
-String HPM::CSVHeader(){
+String HPM::CSVHeader(){												//Data header in CSV format
 	String header = "hits,1um,2.5um,4.0um,10um";
 	return header;
 }
 
-String HPM::logUpdate(){
-	
+String HPM::logUpdate(){												//This will update the data log in CSV format
+  String localDataLog = String(nTot) + ",";								//This system only works when data is not being automatically sent.
+  
+  if (readData()){														//If the data is successfully read, it will be logged
+    nTot++;
+    goodLog = true;
+    badLog = 0;
+    goodLogAge = millis();
+
+    localDataLog += String(localData.PM1_0) + "," + String(localData.PM2_5) + "," + String(localData.PM4_0) + "," + String(localData.PM10_0);
+    
+  } else {																//Otherwise, the data string will be populated with error symbols and
+    localDataLog += "-,-,-,-";											//the system will indicate that the log is bad.
+    badLog++;
+    if (badLog >= 5) goodLog = false;
+    if ((millis()-goodLogAge)>=resetTime){								//If it has been a certain amount of time since the system has had a
+		powerOff();														//good log, it will reset.
+		delay(20000);
+		powerOn();
+		goodLogAge = millis();
+	}
+  }
+
+  return localDataLog;
 }
 
-bool HPM::readData(){
-	
+bool HPM::readData(){													//This function will read the data
+  if (autoSend){														//If the system is in autosend mode, the first part of the code will try to read
+    byte inputArray[32] = {0};											//it. This should be run as fast as possible to get the data.
+  
+    if (!s->available()){												//If the serial is not available, the data will not be read.
+      return false;
+    }
+  
+    if (s->peek() != 0x42){												//If the start byte is not found, the byte is discarded, and the data will not be read.
+      s->read();
+      return false;
+    }
+  
+    if (s->available() < 32){											//If there are not enough data bytes, the data will not be read.
+      return false;
+    }
+    
+    localData.checksum = 0;
+    for (int i = 0; i<32; i++){											//Data is read into the input array
+      inputArray[i] = s->read();
+      if (i<30) localData.checksum += inputArray[i];					//Checksum is calculated
+    }
+  
+    localData.checksumR = bytes2int(inputArray[31],inputArray[30]);		//Sent checksum is read
+   if (localData.checksum != localData.checksumR){						//If the checksums do not match, the data will not be saved.
+     return false;
+   }
+
+   localData.PM1_0 = bytes2int(inputArray[5],inputArray[4]);			//Data is saved
+   localData.PM2_5 = bytes2int(inputArray[7],inputArray[6]);
+   localData.PM4_0 = bytes2int(inputArray[9],inputArray[8]);
+   localData.PM10_0 = bytes2int(inputArray[11],inputArray[10]);
+
+   return true;
+   
+  } else {																//If the system is not in auto send mode, then this code will be used.
+   byte head;
+   byte len;
+   byte cmd;
+
+   for (unsigned short i = 0; i<32; i++) s->read();						//Clear the buffer (redundant, but helpful)
+
+   s->write(0x68);														//Data is requested
+   s->write(0x01);
+   s->write(0x04);
+   s->write(0x93);
+
+   delay(50);
+   
+   if (!s->available()){ 												//If the serial port is not available, the data is not read.
+     return false;
+   }
+
+   if (s->peek() == 0x96){												//If the failure bytes are sent, the data is not read.
+      s->read();
+      s->read();
+      return false;
+   }
+
+    head = s->read();
+    len = s->read();
+    cmd = s->read();
+
+   if (head != 0x40){													//If the start byte is not correct, the data is not read.
+     return false;
+   }  
+
+    if (s->available()<(len)){											//If there are not enough bytes, the data is not read.
+     return false;
+   }
+
+   if (cmd != 0x04){													//If the command is incorrect, the data is not read.
+     return false;
+   }
+
+   uint16_t *inputArray = new uint16_t[len];							//Array for data is created
+   unsigned short i = 0;
+
+   while ((i<len)||(s->available())){									//Data is read into an array
+     inputArray[i] = s->read();
+     i++;
+   }
+
+   localData.checksum = 65536 - (head + len + cmd);						//Checksum is calculated
+   for (unsigned short i = 0; i<len-1; i++) localData.checksum -= inputArray[i];
+   localData.checksum = localData.checksum % 256;
+   localData.checksumR = inputArray[(len-1)];
+  
+   if (localData.checksum != localData.checksumR){						//If the checksums do not match, the data will not be saved.
+     return false;
+   }
+
+   localData.PM1_0 = inputArray[0]*256 + inputArray[1];					//Data is saved
+   localData.PM2_5 = inputArray[2]*256 + inputArray[3];
+   localData.PM4_0 = inputArray[4]*256 + inputArray[5];
+   localData.PM10_0 = inputArray[6]*256 + inputArray[7];
+  
+   delete [] inputArray;
+   return true;
+  }	
 }
 
-void HPM::getData(float dataPtr[], unsigned int arrayFill){
+void HPM::getData(float dataPtr[], unsigned int arrayFill){				//Data is saved directly into an array
+	unsigned int i = 0;
+	uint32_t dataArray[4] = {localData.PM1_0,localData.PM2_5,localData.PM4_0,localData.PM10_0};
 	
+	while ((i<arrayFill)&&(i<4)){
+		dataPtr[i]=dataArray[i];
+		
+		i++;
+	}	
 }			
 
 void HPM::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
+	unsigned int i = arrayStart;										//Data is still saved into an array, but the starting point can be chosen.
+	uint32_t dataArray[4] = {localData.PM1_0,localData.PM2_5,localData.PM4_0,localData.PM10_0};
 	
+	while ((i<arrayFill)&&((i-arrayStart)<4)){
+		dataPtr[i]=dataArray[i-arrayStart];
+		
+		i++;
+	}	
 }	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

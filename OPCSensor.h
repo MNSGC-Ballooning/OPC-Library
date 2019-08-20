@@ -68,9 +68,9 @@ class Plantower: public OPC
 		uint16_t unused;
 		uint16_t checksum;
 	} PMSdata;
-	unsigned int logRate;
+	unsigned int logRate;												//System log rate
 	
-	void command(uint8_t CMD, uint8_t MODE);
+	void command(uint8_t CMD, uint8_t MODE);							//Command base
 	
 	public:
 	Plantower(Stream* ser, unsigned int logRate);						//Plantower constructor
@@ -172,14 +172,20 @@ class HPM: public OPC{
 	struct HPMdata{
 		uint16_t PM1_0, PM2_5, PM4_0, PM10_0, checksum, checksumR;		//Data structure
 	}localData;
+	bool autoSend;														//Auto send data state
 	
-	public:													
-	void powerOn();
-	void powerOff();
-	void initOPC();	
-	String CSVHeader();
-	String logUpdate();
-	bool readData();
+	bool command(byte cmd, byte chk);									//Command base
+	
+	public:	
+	HPM(Stream* ser);												
+	void powerOn();														//Power on will start the measurement system
+	void powerOff();													//Power off will stop measurements
+	void autoSendOn();													//Will automatically send data
+	void autoSendOff();													//Will wait for data requests (recommended)
+	void initOPC();														//Initialize the system
+	String CSVHeader();													//Header in CSV format
+	String logUpdate();													//Update data in CSV string
+	bool readData();													//Read incoming data
 	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
 	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);	
 };
