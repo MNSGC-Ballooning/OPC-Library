@@ -438,7 +438,7 @@ void SPS::getData(float dataPtr[], unsigned int arrayFill, unsigned int arraySta
 	unsigned int i = arrayStart;
 	float dataArray[10] = {m.MCF[0],m.MCF[1],m.MCF[2],m.MCF[3],n.NCF[0],n.NCF[1],n.NCF[2],n.NCF[3],n.NCF[4],a.ASF};
 	
-	while ((i<arrayFill)&&((i-arrayStart)<10){
+	while ((i<arrayFill)&&((i-arrayStart)<10)){
 		dataPtr[i]=dataArray[i-arrayStart];								//The process is the same as above, but you can pass data later into the input array
 		
 		i++;
@@ -685,7 +685,7 @@ void HPM::autoSendOn(){													//Auto send on
 }
 
 void HPM::autoSendOff(){												//Auto send off
-  if(command(0x20,0x77){												//This setting is recommended, and has been successfully tested.
+  if(command(0x20,0x77)){												//This setting is recommended, and has been successfully tested.
 	  autoSend = false;
   }
 }
