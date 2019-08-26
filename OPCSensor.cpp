@@ -76,14 +76,14 @@ uint16_t OPC::bytes2int(byte LSB, byte MSB){							//Two byte conversion to inte
 
 
 
-void Plantower::command(byte CMD, byte Mode){
-	uint16_t verify = 0x42 + 0x4d + CMD + 0x00 + Mode;
+void Plantower::command(byte CMD, byte Mode){							//Command system, that allows for base commands to be easily sent
+	uint16_t verify = 0x42 + 0x4d + CMD + 0x00 + Mode;					//Checksum calculation
 	uint8_t LRCH, LRCL;
 	
-	LRCL = (verify & 0xff);
+	LRCL = (verify & 0xff);												//Split checksum into a most significant and least significant byte
 	LRCH = (verify >> 8);
 	
-	s->write(0x42);
+	s->write(0x42);														//Send data
 	s->write(0x4d);
 	s->write(CMD);
 	s->write((byte)0x00);
@@ -97,35 +97,35 @@ Plantower::Plantower(Stream* ser, unsigned int planLog) : OPC(ser){ 	//Plantower
 }
 	
 	
-void Plantower::powerOn(){
+void Plantower::powerOn(){												//Power on
 	command(0xe4,0x01);
 	
 	delay(20);
-	for (unsigned short i=0; i<8; i++) s->read();
+	for (unsigned short i=0; i<8; i++) s->read();						//Clear buffer
 }
 
-void Plantower::powerOff(){
+void Plantower::powerOff(){												//Power off
 	command(0xe4,0x00);
 	
 	delay(20);
 	for (unsigned short i=0; i<8; i++) s->read();
 }
 
-void Plantower::passiveMode(){
+void Plantower::passiveMode(){											//Passive mode
 	command(0xe1,0x00);
 
 	delay(20);
 	for (unsigned short i=0; i<8; i++) s->read();
 }
 
-void Plantower::activeMode(){
+void Plantower::activeMode(){											//Active mode
 	command(0xe1, 0x01);
 	
 	delay(20);
 	for (unsigned short i=0; i<8; i++) s->read();
 }
 
-void Plantower::initOPC(){
+void Plantower::initOPC(){												//System initalization
 	OPC::initOPC();
 	
 	powerOn();
