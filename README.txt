@@ -28,7 +28,7 @@ The SPS 30 has 10 data points.
 The Alphasense R1 runs the read data function with the log update function,
 and can record new data every 1 seconds. The R1 runs on SPI. As of the latest
 update, the R1 can only run on the primary SPI bus. The Alphasense R1 has 
-16 data points.
+27 data points.
 
 The Honeywell HPMA115S0-004 runs the read data function with the log update function,
 and can record new data every 1 seconds. The HPM serial is 9600 baud. The HPM
@@ -36,7 +36,7 @@ has 4 data points.
 
 The Plantower logs the number of hits, Number Concentrations 0.3um, 0.5um, 1.0um, 2.5um, 5.0um, 10.0um.
 The SPS 30 logs the number of hits, Mass Concentrations 1um, 2.5um, 4.0um, 10um, Number Concentrations 0.5um, 1um, 2.5um, 4.0um, 10um, Average Particle size.
-The Alphasense R1 logs the number of hits,Number Concentrations 00.4um, 00.7um, 01.1um, 01.5um, 01.9um, 02.4um, 03um, 04um, 05um, 06um, 07um, 08um, 09um, 10um, 11um, 12um, 12.4um.
+The Alphasense R1 logs the number of hits,Number Concentrations 00.4um, 00.7um, 01.1um, 01.5um, 01.9um, 02.4um, 03um, 04um, 05um, 06um, 07um, 08um, 09um, 10um, 11um, 12um, 12.4um and more.
 The HPM logs the number of hits, Mass Concentrations 1um, 2.5um, 4.0um, 10um.
 
 
