@@ -455,24 +455,59 @@ R1::R1(uint8_t slave) : OPC() { SSpin = slave; }						//Constructor
 
 void R1::powerOn(){														//system activation
 	byte inData[3] = {0};
+	static unsigned short i = 0;
 
-	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));  	//Begins code with a clock speed, Most signicficant bit first, and in SPI mode 1.
+	SPI.beginTransaction(SPISettings(550000, MSBFIRST, SPI_MODE1));  	//Begins code with a clock speed, Most signicficant bit first, and in SPI mode 1.
 	digitalWrite(SSpin, LOW);                                           
-  
-	inData[0] = SPI.transfer(0x03);                               		//Check returned bytes to ensure that the command was successfully integrated into thpay
-	delay(10);                                                          
-	inData[1] = SPI.transfer(0x03);                               
-	delay(10);
+	
+	inData[0] = SPI.transfer(0x03);                               		//Check returned bytes to ensure that the command was successfully integrated into thpay                                                         
+	delay(15);
+	inData[1] = SPI.transfer(0x03);  
+	delay(15);                             
+	
+	digitalWrite(SSpin, HIGH);                                          
+	SPI.endTransaction();
+	
+	delay(15);
+	Serial.println();
+	Serial.print("Attempt number: ");
+	Serial.print(String(i));
+	Serial.print(", ");
+	Serial.print(inData[0], HEX);
+	Serial.print(", ");
+	Serial.print(inData[1], HEX);
+	Serial.print(", ");
+	i++;
+
+	if(inData[0] != 0x31 || inData[1] != 0xF3)		//If the system does not contain the correct string, then the code will head to Pad
+	{
+		Serial.print("Failure");
+		Serial.print(", ");	
+		if (i<20){
+			Serial.print("Short delay");
+			delay(25);
+		} else {
+			Serial.print("Long delay");
+			delay(5000);
+			i = 0;
+		}	
+		powerOn();
+	}
+	Serial.print("success!");		
+	
+	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));  	//Begins code with a clock speed, Most signicficant bit first, and in SPI mode 1.
+	digitalWrite(SSpin, LOW); 
+	     	
 	inData[2] = SPI.transfer(0x03);
-	delay(10);
+	delay(15);
+	Serial.print(inData[2], HEX);
+
 	digitalWrite(SSpin, HIGH);                                          
 	SPI.endTransaction();
 
-	if(inData[0] != 0x31 || inData[1] != 0xF3 || inData[2] != 0x03)		//If the system does not contain the correct string, then the code will head to Pad
-	{
-		delay(5000);
-		powerOn();
-	}
+//	if (inData[2] != 0x03){
+//		 powerOn()
+//	}
 }
 
 void R1::powerOff(){													//This is the power down sequence
@@ -500,7 +535,7 @@ void R1::initOPC(){
 	OPC::initOPC();														//Calls original init
 
 	SPI.begin();        											 	//Intialize SPI in Arduino
-	delay(1000);
+	delay(2000);
 	powerOn();
 }
 
@@ -544,9 +579,9 @@ bool R1::readData(){
 	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));		//Open SPI line
 	digitalWrite(SSpin, LOW);     
 	
-	test[0] = SPI.transfer(0x30); //0x31								//Check the ready bytes. If the R1 is not ready to transmit data, then it will not
+	test[0] = SPI.transfer(0x30); 										//Check the ready bytes. If the R1 is not ready to transmit data, then it will not
 	delay(10);															//send 0x31 and 0xF3, and the data read will fail.
-	test[1] = SPI.transfer(0x30);//0xF3
+	test[1] = SPI.transfer(0x30);
 
 	if ((test[0] != 0x31)||(test[1] != 0xF3)) return false;
 										
