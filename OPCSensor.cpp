@@ -134,7 +134,8 @@ void Plantower::initOPC(){												//System initalization
 }
 	
 String Plantower::CSVHeader(){											//Returns a data header in CSV formate
-	String header = "hits,03um,05um,10um,25um,50um,100um";
+	String header = "hits,MC1um,MC2.5um,MC10um,AMC1um,AMC2.5um,AMC10um,";
+	header += "NC03um,NC05um,NC10um,NC25um,NC50um,NC100um";
 	return header;
 }
 
@@ -143,18 +144,24 @@ String Plantower::logUpdate(){
 	String dataLogLocal = "";											//Log sample number, in flight time																							
     dataLogLocal += String(nTot) + ",";  
     
-    if ((millis()-goodLogAge <= logRate)&&goodLog) {
-    dataLogLocal += String(PMSdata.particles_03um);                     //If data is in the buffer, log it
-    dataLogLocal += "," + String(PMSdata.particles_05um);
-    dataLogLocal += "," + String(PMSdata.particles_10um);
-    dataLogLocal += "," + String(PMSdata.particles_25um);
-    dataLogLocal += "," + String(PMSdata.particles_50um);
-    dataLogLocal += "," + String(PMSdata.particles_100um);
-    nTot ++;                                                   		    //Total samples
+    if ((millis()-goodLogAge <= logRate)&&goodLog) {                     //If data is in the buffer, log it
+		dataLogLocal += String(PMSdata.pm10_standard);
+		dataLogLocal += "," + String(PMSdata.pm25_standard);
+		dataLogLocal += "," + String(PMSdata.pm100_standard);
+		dataLogLocal += "," + String(PMSdata.pm10_env);
+		dataLogLocal += "," + String(PMSdata.pm25_env);
+		dataLogLocal += "," + String(PMSdata.pm100_env);
+		dataLogLocal += "," + String(PMSdata.particles_03um);
+		dataLogLocal += "," + String(PMSdata.particles_05um);
+		dataLogLocal += "," + String(PMSdata.particles_10um);
+		dataLogLocal += "," + String(PMSdata.particles_25um);
+		dataLogLocal += "," + String(PMSdata.particles_50um);
+		dataLogLocal += "," + String(PMSdata.particles_100um);
+		nTot ++;                                                   		//Total samples
 
 	
 	} else {
-		dataLogLocal += "-,-,-,-,-,-";
+		dataLogLocal += "-,-,-,-,-,-,-,-,-,-,-,-";
 		badLog++;                                                       //If there are five consecutive bad logs, the data string will print a warning
 		if (badLog >= 5){
 			goodLog = false;
@@ -213,9 +220,9 @@ bool Plantower::readData(){												//Command that calls bytes from the plant
 
 void Plantower::getData(float dataPtr[], unsigned int arrayFill){		//Will populate data into a provided array
 	unsigned int i = 0;
-	uint32_t dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
+	uint32_t dataArray[12] = {PMSdata.pm10_standard,PMSdata.pm25_standard,PMSdata.pm100_standard,PMSdata.pm10_env,PMSdata.pm25_env,PMSdata.pm100_env,PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
 	
-	while ((i<arrayFill)&&(i<6)){										//Will fill array or provide all data, whichever comes first
+	while ((i<arrayFill)&&(i<12)){										//Will fill array or provide all data, whichever comes first
 		dataPtr[i]=dataArray[i];
 		
 		i++;
@@ -224,9 +231,9 @@ void Plantower::getData(float dataPtr[], unsigned int arrayFill){		//Will popula
 
 void Plantower::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
 	unsigned int i = arrayStart;										//Same process as above, but a starting point in the external array can be chosen
-	uint32_t dataArray[6] = {PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
+	uint32_t dataArray[12] = {PMSdata.pm10_standard,PMSdata.pm25_standard,PMSdata.pm100_standard,PMSdata.pm10_env,PMSdata.pm25_env,PMSdata.pm100_env,PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
 	
-	while ((i<arrayFill)&&((i-arrayStart)<6)){		
+	while ((i<arrayFill)&&((i-arrayStart)<12)){		
 		dataPtr[i]=dataArray[i-arrayStart];
 		
 		i++;
