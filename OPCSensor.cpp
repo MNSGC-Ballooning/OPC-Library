@@ -457,18 +457,18 @@ void R1::powerOn(){														//system activation
 	byte inData[3] = {0};
 	static unsigned short i = 0;
 
-	SPI.beginTransaction(SPISettings(550000, MSBFIRST, SPI_MODE1));  	//Begins code with a clock speed, Most signicficant bit first, and in SPI mode 1.
+	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));  	//Begins code with a clock speed, Most signicficant bit first, and in SPI mode 1.
 	digitalWrite(SSpin, LOW);                                           
 	
 	inData[0] = SPI.transfer(0x03);                               		//Check returned bytes to ensure that the command was successfully integrated into thpay                                                         
-	delay(15);
+	delay(25);
 	inData[1] = SPI.transfer(0x03);  
 	delay(15);                             
 	
 	digitalWrite(SSpin, HIGH);                                          
 	SPI.endTransaction();
 	
-	delay(15);
+	delay(10);
 	Serial.println();
 	Serial.print("Attempt number: ");
 	Serial.print(String(i));
