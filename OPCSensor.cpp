@@ -144,7 +144,7 @@ String Plantower::logUpdate(){
 	String dataLogLocal = "";											//Log sample number, in flight time																							
     dataLogLocal += String(nTot) + ",";  
     
-    if ((millis()-goodLogAge <= logRate)&&goodLog) {                     //If data is in the buffer, log it
+    if ((millis()-goodLogAge <= logRate)&&goodLog){                     //If data is in the buffer, log it
 		dataLogLocal += String(PMSdata.pm10_standard);
 		dataLogLocal += "," + String(PMSdata.pm25_standard);
 		dataLogLocal += "," + String(PMSdata.pm100_standard);
@@ -158,8 +158,7 @@ String Plantower::logUpdate(){
 		dataLogLocal += "," + String(PMSdata.particles_50um);
 		dataLogLocal += "," + String(PMSdata.particles_100um);
 		nTot ++;                                                   		//Total samples
-
-	
+		
 	} else {
 		dataLogLocal += "-,-,-,-,-,-,-,-,-,-,-,-";
 		badLog++;                                                       //If there are five consecutive bad logs, the data string will print a warning
@@ -178,16 +177,16 @@ String Plantower::logUpdate(){
 }
 
 bool Plantower::readData(){												//Command that calls bytes from the plantower
-  if (! s->available()) {
+  if (! s->available()){
     return false;
   }
   
-  if (s->peek() != 0x42) { 												//Read a byte at a time until we get to the special '0x42' start-byte
+  if (s->peek() != 0x42){ 												//Read a byte at a time until we get to the special '0x42' start-byte
     s->read();
     return false;
   }
  
-  if (s->available() < 32) {  											//Now read all 32 bytes
+  if (s->available() < 32){  											//Now read all 32 bytes
     return false;
   }
     
@@ -195,19 +194,19 @@ bool Plantower::readData(){												//Command that calls bytes from the plant
   uint16_t sum = 0;
   s->readBytes(buffer, 32);
  
-  for (uint8_t i=0; i<30; i++) {  										//Get checksum ready
+  for (uint8_t i=0; i<30; i++){  										//Get checksum ready
     sum += buffer[i];
   }
 
   uint16_t buffer_u16[15];												//Making bins exclusive for each particulate size
-  for (uint8_t i=0; i<15; i++) {										
+  for (uint8_t i=0; i<15; i++){										
     buffer_u16[i] = buffer[2 + i*2 + 1];
     buffer_u16[i] += (buffer[2 + i*2] << 8);
   }
  
   memcpy((void *)&PMSdata, (void *)buffer_u16, 30);						//Put it into a nice struct :)
  
-  if (sum != PMSdata.checksum) {										//if the checksum fails, return false
+  if (sum != PMSdata.checksum){									    	//if the checksum fails, return false
     goodLog = false;
     return false;
   }

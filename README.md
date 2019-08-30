@@ -3,7 +3,7 @@ This is the repository for the OPCSensor library. Currently the Sensirion SPS30,
 The library contains a separate read me that provides an in depth explanation of the library and its functionality.
 
 ## Sensor Overview
-The Plantower PMS 5003 runs the read data function as fast as possible, and can record new data every 2.3 seconds. The PMS5003 serial is 9600 baud. The Plantower has 7 data points, logging the number of hits, Number Concentrations 0.3um, 0.5um, 1.0um, 2.5um, 5.0um, 10.0um.
+The Plantower PMS 5003 runs the read data function as fast as possible, and can record new data every 2.3 seconds. The PMS5003 serial is 9600 baud. The Plantower has 13 data points, logging the number of hits, Mass Concentrations 1um, 2.5um, 10um, environment 1um, 2.5um, 10um, Number Concentrations 0.3um, 0.5um, 1.0um, 2.5um, 5.0um, 10.0um.
  
 The Sensirion SPS 30 runs the read data function with the record data function, and can record new data every 1 seconds. The SPS30 serial is 115200 baud. The SPS 30 is configured for UART communication. I2C communication is not supported. The SPS 30 has 11 data points, logging the number of hits, Mass Concentrations 1um, 2.5um, 4.0um, 10um, Number Concentrations 0.5um, 1um, 2.5um, 4.0um, 10um, Average Particle size.
 
