@@ -457,62 +457,109 @@ void SPS::getData(float dataPtr[], unsigned int arrayFill, unsigned int arraySta
 
 
 
-R1::R1(uint8_t slave) : OPC() { SSpin = slave; }						//Constructor
+R1::R1(uint8_t slave) : OPC() { 										//Constructor
+	CS = slave; 														//Set up SPI slave pin
+	pinMode(CS,OUTPUT);
+	}						
 
 void R1::powerOn(){														//system activation
-	byte inData[3] = {0};
-
-	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));  	//Begins code with a clock speed, Most signicficant bit first, and in SPI mode 1.
-	digitalWrite(SSpin, LOW);                                           
+  byte inData[3] = {0}; 
+  unsigned short loopy = 0; 
+  unsigned short bail = 0;
   
-	inData[0] = SPI.transfer(0x03);                               		//Check returned bytes to ensure that the command was successfully integrated into thpay
-	delay(10);                                                          
-	inData[1] = SPI.transfer(0x03);                               
-	delay(10);
-	inData[2] = SPI.transfer(0x03);
-	delay(10);
-	digitalWrite(SSpin, HIGH);                                          
-	SPI.endTransaction();
+  
+  digitalWrite(CS,LOW);													//Open data translation
+  SPI.beginTransaction(SPISettings(700000, MSBFIRST, SPI_MODE1));
+ 
+  do{																	//Cycle to attempt power on
+	  inData[0] = SPI.transfer(0x03);									//Power signal byte
+	  delay(10);
+	  loopy++;
+	  
+	  if (loopy > 20){													//If 20 attempts to communicate fail, then turn off and back on
+		digitalWrite(CS, HIGH);                                          
+		SPI.endTransaction();
+		delay(1000);
+		loopy = 0;
+		SPI.beginTransaction(SPISettings(700000, MSBFIRST, SPI_MODE1));
+		digitalWrite(CS,LOW);
+		bail++;
+	  }
+  } while ((inData[0] != 0xF3)||(bail <= 5));							//If the system successfully activates, or fails to power on after 120 attempts, give up
 
-	if(inData[0] != 0x31 || inData[1] != 0xF3 || inData[2] != 0x03)		//If the system does not contain the correct string, then the code will head to Pad
-	{
-		delay(5000);
-		powerOn();
-	}
+  inData[1] = SPI.transfer(0x03);										//Control bytes
+  delay(10);
+  inData[2] = SPI.transfer(0x01);
+  delay (10);
+
+  digitalWrite(CS, HIGH);                                          
+  SPI.endTransaction();
+  
+  if (bail >= 5) {														//give up :(
+	  return;
+  }
+  
+  if (inData[1] != 0x03){												//Restart attempt
+    delay(5000);
+    powerOn();
+  }
 }
 
 void R1::powerOff(){													//This is the power down sequence
-	byte inData[3] = {0};
+  byte inData[3] = {0}; 
+  unsigned short loopy = 0; 
+  unsigned short bail = 0;
   
-	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));		//Sends power down command and verifies that the shutdown has occurred.
-	digitalWrite(SSpin, LOW);                                           
-	inData[0] = SPI.transfer(0x03);                              
-	delay(10);                                                         
-	inData[1] = SPI.transfer(0x03);                              
-	delay(10);
-	inData[2] = SPI.transfer(0x00);
-	delay(10);
-	digitalWrite(SSpin, HIGH);                                          
-	SPI.endTransaction();
+  
+  digitalWrite(CS,LOW);													//Open communication
+  SPI.beginTransaction(SPISettings(700000, MSBFIRST, SPI_MODE1));
+ 
+  do{																	//Power down cycle attempts, same system as power on
+	  inData[0] = SPI.transfer(0x03);
+	  delay(10);
+	  loopy++;
+	  
+	  if (loopy > 20){
+		digitalWrite(CS, HIGH);                                          
+		SPI.endTransaction();
+		delay(1000);
+		loopy = 0;
+		SPI.beginTransaction(SPISettings(700000, MSBFIRST, SPI_MODE1));
+		digitalWrite(CS,LOW);
+		bail++;
+	  }
+  } while ((inData[0] != 0xF3)||(bail <= 5));
 
-	if(inData[0] != 0x31 || inData[1] != 0xF3 || inData[2] != 0x03)		
-	{
-		delay(5000);
-		powerOff();
-	}
+  inData[1] = SPI.transfer(0x00);										//Control bytes
+  delay(10);
+  inData[2] = SPI.transfer(0x00);
+  delay (10);
+
+  digitalWrite(CS, HIGH);                                          
+  SPI.endTransaction();
+  
+  if (bail >= 5) {
+	  return;
+  }
+  
+  if (inData[1] != 0x03){
+    delay(5000);
+    powerOff();
+  }
 }
 
 void R1::initOPC(){
 	OPC::initOPC();														//Calls original init
 
 	SPI.begin();        											 	//Intialize SPI in Arduino
-	delay(1000);
-	powerOn();
+	digitalWrite(CS,HIGH);												//Pull the pin up so there is no data leakage
+	delay(2500);
+	powerOn();															
 }
 
 String R1::CSVHeader(){													//Returns a data header in CSV formate
-	String header = "hits,Bin1,Bin2,Bin3,Bin4,Bin5,Bin6,Bin7,Bin8,Bin9,";
-	header += "Bin10,Bin11,Bin12,Bin13,Bin14,Bin15,Bin16,Bin1 Time,Bin3 Time,";
+	String header = "hits,Bin0,Bin1,Bin2,Bin3,Bin4,Bin5,Bin6,Bin7,Bin8,Bin9,";
+	header += "Bin10,Bin11,Bin12,Bin13,Bin14,Bin15,Bin1 Time,Bin3 Time,";
 	header += "Bin5 Time,Bin7 Time,Flow Rate,Temp,Humidity,Sample Period,";
 	header += "PMA,PMB,PMC";
 	return header;
@@ -526,9 +573,31 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
        badLog = 0;
        nTot++;
 	
-		for (int x = 0; x<27; x++){
-			dataLogLocal += ',';
-			dataLogLocal += String(com[x]);
+		for (int x = 0; x<27; x++){										//Data log in CSV
+			if(x == 20){
+				dataLogLocal += ',';
+				dataLogLocal += String(sfr.floatOut);
+				
+			} else if(x == 23){
+				dataLogLocal += ',';
+				dataLogLocal += String(sp.floatOut);
+				
+			} else if(x == 24){
+				dataLogLocal += ',';
+				dataLogLocal += String(a.floatOut);
+				
+			} else if(x == 25){
+				dataLogLocal += ',';
+				dataLogLocal += String(b.floatOut);				
+				
+			} else if(x == 26){
+				dataLogLocal += ',';
+				dataLogLocal += String(c.floatOut);				
+				
+			} else {
+				dataLogLocal += ',';
+				dataLogLocal += String(data[x]);
+			}
 		}
 	} else {
 		badLog ++;
@@ -537,7 +606,7 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 																		//If there is bad data, the string is populated with failure symbols.
 		if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
 			powerOff();													//the system will cycle and clean the dust bin.
-			delay (2000);
+			delay (2000);												//The system now has a function checksum
 			powerOn();
 			delay (100);
 			goodLogAge = millis();
@@ -546,86 +615,102 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 	 return dataLogLocal;
  }
 
-bool R1::readData(){
-	SPI.beginTransaction(SPISettings(750000, MSBFIRST, SPI_MODE1));		//Open SPI line
-	digitalWrite(SSpin, LOW);     
-	
-	test[0] = SPI.transfer(0x30); //0x31								//Check the ready bytes. If the R1 is not ready to transmit data, then it will not
-	delay(10);															//send 0x31 and 0xF3, and the data read will fail.
-	test[1] = SPI.transfer(0x30);//0xF3
+bool R1::readData(){													//Data reading system
+  digitalWrite(CS,LOW);
+  SPI.beginTransaction(SPISettings(700000, MSBFIRST, SPI_MODE1));
 
-	if ((test[0] != 0x31)||(test[1] != 0xF3)) return false;
-										
-	delayMicroseconds(50);
+  byte test = 0x00;
+  byte raw[64] = {0};
+  unsigned short loopy = 0;
+  unsigned short bail = 0;
   
-	for(int i = 0; i<64; i++)											//Raw data is collected for the 16 bins (16bits each)
-	{
-		raw[i] = SPI.transfer(0x30);
-		delayMicroseconds(50);
-	}
- 
-	SPI.endTransaction();												//A checksum for the R1 that is indevelopnent.
+  do{																	//Attempt to communicate
+	  delay(10);
+	  test = SPI.transfer(0x30);
+	  loopy++;
+  
+	  if (loopy > 20){
+		digitalWrite(CS, HIGH);                                          
+		SPI.endTransaction();
+		delay(1000);
+		loopy = 0;
+		SPI.beginTransaction(SPISettings(700000, MSBFIRST, SPI_MODE1));
+		digitalWrite(CS,LOW);
+		bail++;
+		if (bail >= 5) return false;
+	  }
+	  
+  } while (test != 0xF3);
+  
+	for (unsigned short i = 0; i < 64; i++){							//Pull data
+		delayMicroseconds(20);
+		raw[i] = SPI.transfer(0x30); 
+	 }
+	 
+  digitalWrite(CS,HIGH);
+  SPI.endTransaction();													//End communciation
+  
+  for (unsigned short x=0; x<16; x++){									//Convert bytes into data
+    data[x] = bytes2int(raw[(x*2)], raw[(x*2+1)]);
+   }
 
-	for (int x=0; x<27; x++){											//The data is parse- two bits per pin
-		if (x<16) com[x] = bytes2int(raw[(x*2)], raw[(x*2+1)]);
-		if ((x>=16)&&(x<20)) com[x] = raw[x+16];
-				
-		if (x==20) {													//If bytes are in a union, the need to be flipped
-			unsigned short flip = 39;									//unions are used to turn four bytes into a float
-			for (unsigned short y = 0; y<4; y++){
-				sfr.SFRB[y] = raw[flip];
-				
-				flip--;
-			}
-			com[x] = sfr.SFRF;
-		}
-		if (x==21) com[x] = bytes2int(raw[40],raw[41]);					//turns two bytes into a uint16_t
-		if (x==22) com[x] = bytes2int(raw[42],raw[43]);
-		if (x==23){
-			unsigned short flip = 47;
-			for (unsigned short y = 0; y<4; y++){						//More flips
-				sp.SPB[y] = raw[flip];
-				
-				flip--;
-			}
-			com[x] = sp.SPF;
-		}
-		
-		if (x==24){
-			unsigned short flip = 53;
-			for (unsigned short y = 0; y<4; y++){						//More flips
-				a.PMB[y] = raw[flip];
-				
-				flip--;
-			}
-			com[x] = a.PMF;
-		}
-		
-		if (x==25){
-			unsigned short flip = 57;
-			for (unsigned short y = 0; y<4; y++){						//More flips
-				b.PMB[y] = raw[flip];
-				
-				flip--;
-			}
-			com[x] = b.PMF;
-		}
-		
-		if (x==26){
-			unsigned short flip = 61;
-			for (unsigned short y = 0; y<4; y++){						//More flips
-				c.PMB[y] = raw[flip];
-				
-				flip--;
-			}
-			com[x] = c.PMF;
-		}
-	}
-	
-	return true;
+  for (int x = 16; x<20; x++){
+    data[x] = raw[x+16];
+  }
+
+  for (unsigned short x = 0; x<4; x++){
+    sfr.byteIn[x] = raw[x+36];
+  }
+
+  data[20] = bytes2int(raw[40], raw[41]);
+  data[21] = bytes2int(raw[42], raw[43]);
+
+  for (unsigned short x = 0; x<4; x++){
+    sp.byteIn[x] = raw[x+44];
+  }
+
+  data[22] = raw[48];
+  data[23] = raw[49];
+
+  for (unsigned short x = 0; x<4; x++){
+    a.byteIn[x] = raw[x+50];
+  }
+
+  for (unsigned short x = 0; x<4; x++){
+    b.byteIn[x] = raw[x+54];
+  }
+
+  for (unsigned short x = 0; x<4; x++){
+    c.byteIn[x] = raw[x+58];
+  }
+
+  data[24] = bytes2int(raw[62],raw[63]);
+  
+  return (data[24] == CalcCRC(raw,62));									//Return results of the checksum
+
 }
 
-void R1::getData(float dataPtr[], unsigned int arrayFill){				//This fills an array with the data instead of using CSV format
+unsigned int R1::CalcCRC(unsigned char data[], unsigned char nbrOfBytes) {
+    #define POLYNOMIAL 0xA001 											//Generator polynomial for CRC
+    #define InitCRCval 0xFFFF 											//Initial CRC value
+    unsigned char _bit; 												//Bit mask
+    unsigned int crc = InitCRCval; 										//Initialise calculated checksum 
+    unsigned char byteCtr; 												//Byte counter
+																		//Calculates 16-Bit checksum with given polynomial  
+    for(byteCtr = 0; byteCtr < nbrOfBytes; byteCtr++) {
+      crc ^= (unsigned int)data[byteCtr]; 
+      for(_bit = 0; _bit < 8; _bit++) {
+        if (crc & 1) 													//If bit0 of crc is 1
+        {
+            crc >>= 1;
+            crc ^= POLYNOMIAL; 
+        } else crc >>= 1;
+      }
+    }
+    return crc; 
+}
+																		//I have not set this up yet
+/*void R1::getData(float dataPtr[], unsigned int arrayFill){			//This fills an array with the data instead of using CSV format
 	unsigned int i = 0;
 	
 	while ((i<arrayFill)&&(i<27)){
@@ -643,7 +728,7 @@ void R1::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStar
 		
 		i++;
 	}
-}
+}*/
 
 
 

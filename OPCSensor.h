@@ -130,28 +130,15 @@ class SPS: public OPC
 
 class R1: public OPC {													//The R1 runs on SPI Communication
 	private:
-	uint8_t SSpin;														//Slave Select pin for specification. The code will only run on the default SPI pins.
-	byte test[2];														//Data arrays
-	byte raw[64];
-	uint16_t com[27];
+	uint8_t CS;															//Slave Select pin for specification. The code will only run on the default SPI pins.
+	uint16_t data[25];													//Data arrays
+	unsigned int CalcCRC(unsigned char data[], unsigned char nbrOfBytes);//Checksum calculator
 	
-	union SFR                                                           //Defines the union for sample flow rate
+	union byteToFloat                                                   //Defines the union for sample flow rate, sampling period, and PM bins
 	{
-		byte SFRB[4];
-		float SFRF;
-	}sfr;
-	
-	union SP                                                            //Defines the union for sampling period
-	{
-		byte SPB[4];
-		float SPF;
-	}sp;
-	
-	union PM                                                            //Defines the union for PM bins A, B, and C
-	{
-		byte PMB[4];
-		float PMF;
-	}a,b,c;
+		byte byteIn[4];
+		float floatOut;
+	}sfr,sp,a,b,c;
 	
 	public:
 	R1(uint8_t slave);													//Alphasense constructor
@@ -161,8 +148,8 @@ class R1: public OPC {													//The R1 runs on SPI Communication
 	String CSVHeader();													//Overrrides the OPC data functions
 	String logUpdate();
 	bool readData();
-	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
-	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);													
+//	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
+//	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);													
 };
 
 
