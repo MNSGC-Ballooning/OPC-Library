@@ -127,7 +127,6 @@ class SPS: public OPC
 
 
 
-
 class R1: public OPC {													//The R1 runs on SPI Communication
 	private:
 	uint8_t CS;															//Slave Select pin for specification. The code will only run on the default SPI pins.
