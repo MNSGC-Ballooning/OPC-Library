@@ -315,16 +315,16 @@ String SPS::logUpdate(){                          				        //This function wi
 
    for(unsigned short k = 0; k<4; k++){                                 //This loop will populate the data string with mass concentrations.
       if (k==0) {
-         dataLogLocal += ',' + String(m.MCF[k]) + ',';                  //Each bin from the sensor includes all of the particles from the bin
+         dataLogLocal += ',' + String(m.MCF[k],6) + ',';                //Each bin from the sensor includes all of the particles from the bin
         } else {                                                        //below it.
-         dataLogLocal += String(m.MCF[k]) + ',';            		    
+         dataLogLocal += String(m.MCF[k],6) + ',';            		    
         }
    }
 
    for(unsigned short k = 0; k<5; k++){                                 //This loop will populate the data string with number concentrations.
-        dataLogLocal += String(n.NCF[k]) + ',';
+        dataLogLocal += String(n.NCF[k],6) + ',';
    }
-    dataLogLocal += String(a.ASF);                                      //This adds the average particle size to the end of the bin.
+    dataLogLocal += String(a.ASF,6);                                    //This adds the average particle size to the end of the bin.
     
   } else {
 	 badLog ++;
@@ -576,23 +576,23 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 		for (int x = 0; x<27; x++){										//Data log in CSV
 			if(x == 20){
 				dataLogLocal += ',';
-				dataLogLocal += String(sfr.floatOut);
+				dataLogLocal += String(sfr.floatOut,6);
 				
 			} else if(x == 23){
 				dataLogLocal += ',';
-				dataLogLocal += String(sp.floatOut);
+				dataLogLocal += String(sp.floatOut,6);
 				
 			} else if(x == 24){
 				dataLogLocal += ',';
-				dataLogLocal += String(a.floatOut);
+				dataLogLocal += String(a.floatOut,6);
 				
 			} else if(x == 25){
 				dataLogLocal += ',';
-				dataLogLocal += String(b.floatOut);				
+				dataLogLocal += String(b.floatOut,6);				
 				
 			} else if(x == 26){
 				dataLogLocal += ',';
-				dataLogLocal += String(c.floatOut);				
+				dataLogLocal += String(c.floatOut,6);				
 				
 			} else {
 				dataLogLocal += ',';
