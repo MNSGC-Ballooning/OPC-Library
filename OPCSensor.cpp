@@ -469,7 +469,7 @@ void R1::powerOn(){														//system activation
   
   
   digitalWrite(CS,LOW);													//Open data translation
-  SPI.beginTransaction(SPISettings(700000, MSBFIRST, SPI_MODE1));
+  SPI.beginTransaction(SPISettings(R1_SPEED, MSBFIRST, SPI_MODE1));
  
   do{																	//Cycle to attempt power on
 	  inData[0] = SPI.transfer(0x03);									//Power signal byte
@@ -481,7 +481,7 @@ void R1::powerOn(){														//system activation
 		SPI.endTransaction();
 		delay(1000);
 		loopy = 0;
-		SPI.beginTransaction(SPISettings(700000, MSBFIRST, SPI_MODE1));
+		SPI.beginTransaction(SPISettings(R1_SPEED, MSBFIRST, SPI_MODE1));
 		digitalWrite(CS,LOW);
 		bail++;
 	  }
@@ -512,7 +512,7 @@ void R1::powerOff(){													//This is the power down sequence
   
   
   digitalWrite(CS,LOW);													//Open communication
-  SPI.beginTransaction(SPISettings(700000, MSBFIRST, SPI_MODE1));
+  SPI.beginTransaction(SPISettings(R1_SPEED, MSBFIRST, SPI_MODE1));
  
   do{																	//Power down cycle attempts, same system as power on
 	  inData[0] = SPI.transfer(0x03);
@@ -524,7 +524,7 @@ void R1::powerOff(){													//This is the power down sequence
 		SPI.endTransaction();
 		delay(1000);
 		loopy = 0;
-		SPI.beginTransaction(SPISettings(700000, MSBFIRST, SPI_MODE1));
+		SPI.beginTransaction(SPISettings(R1_SPEED, MSBFIRST, SPI_MODE1));
 		digitalWrite(CS,LOW);
 		bail++;
 	  }
@@ -617,7 +617,7 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 
 bool R1::readData(){													//Data reading system
   digitalWrite(CS,LOW);
-  SPI.beginTransaction(SPISettings(700000, MSBFIRST, SPI_MODE1));
+  SPI.beginTransaction(SPISettings(R1_SPEED, MSBFIRST, SPI_MODE1));
 
   byte test = 0x00;
   byte raw[64] = {0};
@@ -634,7 +634,7 @@ bool R1::readData(){													//Data reading system
 		SPI.endTransaction();
 		delay(1000);
 		loopy = 0;
-		SPI.beginTransaction(SPISettings(700000, MSBFIRST, SPI_MODE1));
+		SPI.beginTransaction(SPISettings(R1_SPEED, MSBFIRST, SPI_MODE1));
 		digitalWrite(CS,LOW);
 		bail++;
 		if (bail >= 5) return false;

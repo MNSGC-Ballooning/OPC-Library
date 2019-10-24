@@ -27,6 +27,7 @@ record new data every 1 seconds.*/
 #include <arduino.h>
 #include <SPI.h>
 #include <Stream.h>
+#define R1_SPEED 500000
 
 class OPC																//Parent OPC class
 {
