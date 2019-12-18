@@ -143,8 +143,10 @@ class R1: public OPC {													//The R1 runs on SPI Communication
 	public:
 	R1(uint8_t slave);													//Alphasense constructor
 	void powerOn();														//Power on will activate the fan, laser, and data communication
+	void powerOnPump();													//Power on for use with an external pump
 	void powerOff();													//Power off will deactivate these same things
-	void initOPC();														//Initializes the OPC
+//	void initOPC(char t);												//Initializes the OPC
+	void initOPC();
 	String CSVHeader();													//Overrrides the OPC data functions
 	String logUpdate();
 	bool readData();

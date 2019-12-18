@@ -505,6 +505,50 @@ void R1::powerOn(){														//system activation
   }
 }
 
+void R1::powerOnPump(){
+  byte inData[3] = {0}; 
+  unsigned short loopy = 0; 
+  unsigned short bail = 0;
+  
+  
+  digitalWrite(CS,LOW);													//Open data translation
+  SPI.beginTransaction(SPISettings(R1_SPEED, MSBFIRST, SPI_MODE1));
+ 
+  do{																	//Cycle to attempt power on
+	  inData[0] = SPI.transfer(0x03);									//Power signal byte
+	  delay(10);
+	  loopy++;
+	  
+	  if (loopy > 20){													//If 20 attempts to communicate fail, then turn off and back on
+		digitalWrite(CS, HIGH);                                          
+		SPI.endTransaction();
+		delay(1000);
+		loopy = 0;
+		SPI.beginTransaction(SPISettings(R1_SPEED, MSBFIRST, SPI_MODE1));
+		digitalWrite(CS,LOW);
+		bail++;
+	  }
+  } while ((inData[0] != 0xF3)||(bail <= 5));							//If the system successfully activates, or fails to power on after 120 attempts, give up
+
+  inData[1] = SPI.transfer(0x03);										//Control bytes
+  delay(10);
+  inData[2] = SPI.transfer(0x00);	//CHANGED BYTE
+  delay (10);
+
+  digitalWrite(CS, HIGH);                                          
+  SPI.endTransaction();
+  
+  if (bail >= 5) {														//give up :(
+	  return;
+  }
+  
+  if (inData[1] != 0x03){												//Restart attempt
+    delay(5000);
+    powerOnPump();
+  }
+}
+	
+
 void R1::powerOff(){													//This is the power down sequence
   byte inData[3] = {0}; 
   unsigned short loopy = 0; 
@@ -548,13 +592,19 @@ void R1::powerOff(){													//This is the power down sequence
   }
 }
 
+//void R1::initOPC(char t){
 void R1::initOPC(){
 	OPC::initOPC();														//Calls original init
 
 	SPI.begin();        											 	//Intialize SPI in Arduino
 	digitalWrite(CS,HIGH);												//Pull the pin up so there is no data leakage
 	delay(2500);
-	powerOn();															
+//	if (t == 'p')
+//	{
+//		powerOnPump();
+	} else {
+	powerOn();	
+	}														
 }
 
 String R1::CSVHeader(){													//Returns a data header in CSV formate
@@ -817,14 +867,13 @@ String HPM::logUpdate(){												//This will update the data log in CSV forma
 		goodLogAge = millis();
 	}
   }
-
   return localDataLog;
 }
 
 bool HPM::readData(){													//This function will read the data
   if (autoSend){														//If the system is in autosend mode, the first part of the code will try to read
     byte inputArray[32] = {0};											//it. This should be run as fast as possible to get the data.
-  
+	    
     if (!s->available()){												//If the serial is not available, the data will not be read.
       return false;
     }
