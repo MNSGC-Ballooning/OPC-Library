@@ -602,9 +602,9 @@ void R1::initOPC(){
 //	if (t == 'p')
 //	{
 //		powerOnPump();
-	} else {
+//	} else {
 	powerOn();	
-	}														
+//	}														
 }
 
 String R1::CSVHeader(){													//Returns a data header in CSV formate
