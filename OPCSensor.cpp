@@ -134,17 +134,18 @@ void Plantower::initOPC(){												//System initalization
 }
 	
 String Plantower::CSVHeader(){											//Returns a data header in CSV formate
-	String header = "hits,MC1um,MC2.5um,MC10um,AMC1um,AMC2.5um,AMC10um,";
+	String header = "hits,lastLog,MC1um,MC2.5um,MC10um,AMC1um,AMC2.5um,AMC10um,";
 	header += "NC03um,NC05um,NC10um,NC25um,NC50um,NC100um";
 	return header;
 }
 
 String Plantower::logUpdate(){
+	unsigned int lastLog = millis() - goodLogAge;
 
 	String dataLogLocal = "";											//Log sample number, in flight time																							
-    dataLogLocal += String(nTot) + ",";  
+    dataLogLocal += String(nTot) + "," + String(lastLog) + ",";  
     
-    if ((millis()-goodLogAge <= logRate)&&goodLog){                     //If data is in the buffer, log it
+    if ((lastLog <= logRate)&&goodLog){                  			    //If data is in the buffer, log it
 		dataLogLocal += String(PMSdata.pm10_standard);
 		dataLogLocal += "," + String(PMSdata.pm25_standard);
 		dataLogLocal += "," + String(PMSdata.pm100_standard);
@@ -301,17 +302,20 @@ void SPS::initOPC()                            			  		        //SPS initializati
 }
 
 String SPS::CSVHeader(){												//Returns a data header in CSV formate
-	String header = "hits,MC-1um,MC-2.5um,MC-4.0um,MC-10um,NC-0.5um,NC-1um,NC-2.5um,NC-4.0um,NC-10um,Avg. PM";
+	String header = "hits,lastLog,MC-1um,MC-2.5um,MC-4.0um,MC-10um,NC-0.5um,NC-1um,NC-2.5um,NC-4.0um,NC-10um,Avg. PM";
 	return header;
 }
 
 String SPS::logUpdate(){                          				        //This function will parse the data and form loggable strings.
+	unsigned int lastLog;
     String dataLogLocal = String(nTot);   
     if (readData()){                                                    //Read the data and determine the read success.
        goodLog = true;                                                  //This will establish the good log inidicators.
        goodLogAge = millis();
        badLog = 0;
        nTot++;
+       lastLog = millis() - goodLogAge;
+	   dataLogLocal = "," + String(lastLog);
 
    for(unsigned short k = 0; k<4; k++){                                 //This loop will populate the data string with mass concentrations.
       if (k==0) {
@@ -328,7 +332,9 @@ String SPS::logUpdate(){                          				        //This function wi
     
   } else {
 	 badLog ++;
-	 if (badLog >= 5) goodLog = false;									//Good log situation the same as in the Plantower code
+	 if (badLog >= 5) goodLog = false;	
+	 lastLog = millis() - goodLogAge;									//Good log situation the same as in the Plantower code
+	 dataLogLocal = "," + String(lastLog);
 	 dataLogLocal += ",-,-,-,-,-,-,-,-,-,-";							//If there is bad data, the string is populated with failure symbols.              
 	 if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
 		 powerOff();													//the system will cycle and clean the dust bin.
@@ -451,6 +457,15 @@ void SPS::getData(float dataPtr[], unsigned int arrayFill, unsigned int arraySta
 	}
 }
 
+bool SPS::altClean(float altitude, float cleanAlt){
+	if ((!altCleaned)&&(altitude > cleanAlt)){
+		clean();
+		altCleaned = true;
+		return true;
+	}
+	return false;
+}
+	
 
 
 //////////R1//////////
@@ -505,7 +520,7 @@ void R1::powerOn(){														//system activation
   }
 }
 
-void R1::powerOnPump(){
+/*void R1::powerOnPump(){
   byte inData[3] = {0}; 
   unsigned short loopy = 0; 
   unsigned short bail = 0;
@@ -546,7 +561,7 @@ void R1::powerOnPump(){
     delay(5000);
     powerOnPump();
   }
-}
+}*/
 	
 
 void R1::powerOff(){													//This is the power down sequence
@@ -608,7 +623,7 @@ void R1::initOPC(){
 }
 
 String R1::CSVHeader(){													//Returns a data header in CSV formate
-	String header = "hits,Bin0,Bin1,Bin2,Bin3,Bin4,Bin5,Bin6,Bin7,Bin8,Bin9,";
+	String header = "hits,lastLog,Bin0,Bin1,Bin2,Bin3,Bin4,Bin5,Bin6,Bin7,Bin8,Bin9,";
 	header += "Bin10,Bin11,Bin12,Bin13,Bin14,Bin15,Bin1 Time,Bin3 Time,";
 	header += "Bin5 Time,Bin7 Time,Flow Rate,Temp,Humidity,Sample Period,";
 	header += "PMA,PMB,PMC";
@@ -616,12 +631,15 @@ String R1::CSVHeader(){													//Returns a data header in CSV formate
 }
 
 String R1::logUpdate(){													//If the log is successful, each bin will be logged.
+	unsigned int lastLog;
 	String dataLogLocal = String(nTot);
 	if (readData()){
 	   goodLog = true;                                                  
        goodLogAge = millis();
        badLog = 0;
        nTot++;
+       lastLog = millis() - goodLogAge;
+       dataLogLocal = "," + String(lastLog);
 	
 		for (int x = 0; x<27; x++){										//Data log in CSV
 			if(x == 20){
@@ -652,6 +670,8 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 	} else {
 		badLog ++;
 		if (badLog >= 5) goodLog = false;								//Good log situation the same as in the Plantower code
+		lastLog = millis() - goodLogAge;
+		dataLogLocal = "," + String(lastLog);
 		dataLogLocal += ",-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-";	                   
 																		//If there is bad data, the string is populated with failure symbols.
 		if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
@@ -666,7 +686,7 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
  }
 
 bool R1::readData(){													//Data reading system
-  digitalWrite(CS,LOW);
+  digitalWrite(CS,LOW);													//ADD TEMPERATURE AND HUMIDITY CALCULATIONS
   SPI.beginTransaction(SPISettings(R1_SPEED, MSBFIRST, SPI_MODE1));
 
   byte test = 0x00;
@@ -846,6 +866,7 @@ String HPM::CSVHeader(){												//Data header in CSV format
 }
 
 String HPM::logUpdate(){												//This will update the data log in CSV format
+  unsigned int lastLog = millis() - goodLogAge;
   String localDataLog = String(nTot) + ",";								//This system only works when data is not being automatically sent.
   
   if (readData()){														//If the data is successfully read, it will be logged
@@ -853,10 +874,12 @@ String HPM::logUpdate(){												//This will update the data log in CSV forma
     goodLog = true;
     badLog = 0;
     goodLogAge = millis();
+    localDataLog = String(lastLog) + ",";
 
     localDataLog += String(localData.PM1_0) + "," + String(localData.PM2_5) + "," + String(localData.PM4_0) + "," + String(localData.PM10_0);
     
   } else {																//Otherwise, the data string will be populated with error symbols and
+    localDataLog = String(lastLog) + ",";
     localDataLog += "-,-,-,-";											//the system will indicate that the log is bad.
     badLog++;
     if (badLog >= 5) goodLog = false;
@@ -993,3 +1016,255 @@ void HPM::getData(float dataPtr[], unsigned int arrayFill, unsigned int arraySta
 		i++;
 	}	
 }	
+
+
+
+//////////N3///////////
+
+
+
+N3::N3(uint8_t slave) : OPC() { 										//Constructor
+	CS = slave; 														//Set up SPI slave pin
+	pinMode(CS,OUTPUT);
+}	
+
+bool N3::initCommand(byte command){
+  byte byte1 = 0;
+  byte byte2 = 0; 
+  unsigned short bail = 0;
+  bool success = false;
+  
+  digitalWrite(CS,LOW);													//Open data translation
+  SPI.beginTransaction(SPISettings(N3_SPEED, MSBFIRST, SPI_MODE1));
+  delay(10);
+  
+  while (!success && (bail < 25)){
+	  delay(1);
+	  byte1 = byte2;
+	  byte2 = SPI.transfer(0x03);
+	  Serial.print(byte2,HEX);
+	  Serial.print(" ");
+	  delay(10);
+	  bail++;
+	  success = ((byte1 == 0x31)&&(byte2 == 0xF3));
+  }
+  
+  if (success) {
+	  	byte2 = SPI.transfer(command);
+		Serial.println("Successful communication!");
+		SPI.endTransaction(); 
+		digitalWrite(CS, HIGH); 
+  } else {
+	  Serial.println("Failed communication!");
+	  SPI.endTransaction(); 
+	  digitalWrite(CS, HIGH); 
+  }
+  
+}
+
+void N3::laserOn(){														//laser on
+	if(initCommand(0x05)){
+		Serial.println("Laser Online!");
+		return;
+	}else{
+		Serial.println("Big fail energy, trying again...");
+		if (initCommand(0x05)) Serial.println("Laser Online!");
+		else Serial.println("Laser Activation Failure :(");
+	 }
+}
+
+void N3::laserOff(){													//laser off
+	if(initCommand(0x04)){
+		Serial.println("Laser Offline!");
+		return;
+	}else{
+		Serial.println("Big fail energy, trying again...");
+		if (initCommand(0x04)) Serial.println("Laser Offline!");
+		else Serial.println("Laser Deactivation Failure :(");
+	 }
+}
+
+void N3::fanOn(){														//fan on
+	if(initCommand(0x03)){
+		Serial.println("Fan Online!");
+		return;
+	}else{
+		Serial.println("Big fail energy, trying again...");
+		if (initCommand(0x03)) Serial.println("Fan Online!");
+		else Serial.println("Fan Activation Failure :(");
+	 }
+}
+
+void N3::fanOff(){														//fan off
+	if(initCommand(0x02)){
+		Serial.println("Fan Offline!");
+		return;
+	}else{
+		Serial.println("Big fail energy, trying again...");
+		if (initCommand(0x02)) Serial.println("Fan Offline!");
+		else Serial.println("Fan Deactivation Failure :(");
+	 }
+}
+
+void N3::powerOn(){
+	laserOn();
+	delay(500);
+	fanOn();
+	delay(1000);
+}
+
+void N3::powerOnPump(){
+	laserOn();
+	delay(50);
+	fanOff();
+	delay(1000);
+}
+
+void N3::powerOff(){
+	fanOff();
+	delay(50);
+	laserOff();
+	delay(50);
+}
+
+void N3::initOPC(char t){
+	OPC::initOPC();														//Calls original init
+
+	SPI.begin();        											 	//Intialize SPI in Arduino
+	digitalWrite(CS,HIGH);												//Pull the pin up so there is no data leakage
+	delay(2500);
+	if (t == 'p') powerOnPump();
+	else powerOn();														
+}
+
+String N3::CSVHeader(){
+	String header = "hits,lastLog,Bin0,Bin1,Bin2,Bin3,Bin4,Bin5,Bin6,Bin7,Bin8,Bin9,";
+	header += "Bin10,Bin11,Bin12,Bin13,Bin14,Bin15,Bin16,Bin17,Bin18,Bin19,";
+	header += "Bin20,Bin21,Bin22,Bin23,Bin1 Time,Bin3 Time,Bin5 Time,Bin7 Time,";
+	header += "Sampling Period,Flow Rate,Temp,Humidity,PM1,PM2_5,PM10,fanRev,laser";
+	return header;
+}
+
+String N3::logUpdate(){
+	unsigned int lastLog;
+	String dataLogLocal = String(nTot);
+	if (readData()){
+	   goodLog = true;                                                  
+       goodLogAge = millis();
+       badLog = 0;
+       nTot++;
+       lastLog = millis() - goodLogAge;
+       dataLogLocal += "," + String(lastLog);
+	
+	   for (unsigned short i = 0; i < 24; i++) dataLogLocal += "," + String(localData.bins[i]);
+	   dataLogLocal += "," + String(localData.bin1time);
+	   dataLogLocal += "," + String(localData.bin2time);
+	   dataLogLocal += "," + String(localData.bin3time);
+	   dataLogLocal += "," + String(localData.bin4time);
+	   dataLogLocal += "," + String(localData.samplePeriod);
+	   dataLogLocal += "," + String(localData.sampleFlowRate);   
+	   dataLogLocal += "," + String(localData.temp);
+	   dataLogLocal += "," + String(localData.humid); 
+	   dataLogLocal += "," + String(localData.pm1);  
+	   dataLogLocal += "," + String(localData.pm2_5);
+	   dataLogLocal += "," + String(localData.pm10);
+	   dataLogLocal += "," + String(localData.fanRevCount);
+	   dataLogLocal += "," + String(localData.laserStatus);		   		   		   	    	     	      	   	      
+	} else {
+		lastLog = millis() - goodLogAge;
+		badLog ++;
+		if (badLog >= 5) goodLog = false;								//Good log situation the same as in the Plantower code
+		dataLogLocal += "," + String(lastLog);
+		dataLogLocal += ",-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-";	//37                   
+																		//If there is bad data, the string is populated with failure symbols.
+	/*	if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
+			powerOff();													//the system will cycle and clean the dust bin.
+			delay (2000);												//The system now has a function checksum
+			powerOn();
+			delay (100);
+			goodLogAge = millis();
+		} */
+	}
+	 return dataLogLocal;
+}
+
+bool N3::readData(){ 
+	byte transmitData[86] = {0};
+	
+	byte byte1 = 0;
+	byte byte2 = 0; 
+	unsigned short bail = 0;
+	bool success = false;
+  
+  digitalWrite(CS,LOW);													//Open data translation
+  SPI.beginTransaction(SPISettings(N3_SPEED, MSBFIRST, SPI_MODE1));
+ 
+  while (!success && (bail < 25)){
+	  delay(1);
+	  byte1 = byte2;
+	  byte2 = SPI.transfer(0x30);
+	  Serial.print(byte2,HEX);
+	  Serial.print(" ");
+	  delay(10);
+	  bail++;
+	  success = ((byte1 == 0x31)&&(byte2 == 0xF3));
+  }
+  
+  if (success) {
+		Serial.println("Successful communication!");
+  } else {
+	  Serial.println("Failed communication!");  
+	  SPI.endTransaction();
+	  digitalWrite(CS, HIGH);	  
+	  return false;
+  }
+  Serial.println();
+  
+	for (int i = 0; i<86; i++){
+		delayMicroseconds(10);
+		transmitData[i] = SPI.transfer(0x30);
+		Serial.print(transmitData[i],HEX);
+		Serial.print(" ");
+	}
+	 
+	SPI.endTransaction();
+	digitalWrite(CS, HIGH); 
+	
+	memcpy(&localData, &transmitData, 86);	
+	
+	if (!(localData.checkSum == CalcCRC(transmitData, 84))) Serial.println("Bad checksum!");
+	return true;
+//	return (localData.checkSum == CalcCRC(transmitData, 84));
+}
+	
+unsigned int N3::CalcCRC(unsigned char data[], unsigned char nbrOfBytes){
+    #define POLYNOMIAL 0xA001 											//Generator polynomial for CRC
+    #define InitCRCval 0xFFFF 											//Initial CRC value
+    unsigned char _bit; 												//Bit mask
+    unsigned int crc = InitCRCval; 										//Initialise calculated checksum 
+    unsigned char byteCtr; 												//Byte counter
+																		//Calculates 16-Bit checksum with given polynomial  
+    for(byteCtr = 0; byteCtr < nbrOfBytes; byteCtr++) {
+      crc ^= (unsigned int)data[byteCtr]; 
+      for(_bit = 0; _bit < 8; _bit++) {
+        if (crc & 1) 													//If bit0 of crc is 1
+        {
+            crc >>= 1;
+            crc ^= POLYNOMIAL; 
+        } else crc >>= 1;
+      }
+    }
+    return crc; 
+}
+
+
+
+
+
+
+
+
+
+
+
+

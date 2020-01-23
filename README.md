@@ -54,6 +54,7 @@ Data from the first 30 seconds of powering on the sensors will not be reliable, 
 
 #### SPS
 - .clean() - used to clean the system (void) (called by initOPC)
+- .altClean(
 
 #### R1
 - constructed with a slave pin instead of a serial line.
