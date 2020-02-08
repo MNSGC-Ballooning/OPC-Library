@@ -29,8 +29,8 @@ record new data every 1 seconds.
 #include <arduino.h>
 #include <SPI.h>
 #include <Stream.h>
-#define R1_SPEED 500000
-#define N3_SPEED 500000
+#define R1_SPEED 300000
+#define N3_SPEED 300000
 
 class OPC																//Parent OPC class
 {
@@ -116,6 +116,12 @@ class SPS: public OPC
 		byte ASA[4];
 		float ASF;
 	}a;
+	
+	struct SPS30data {
+		float aver;
+		float nums[5];
+		float mas[4];
+	}SPSdata;
 
 	public:
 	SPS(Stream* ser);													//Parent Constructor
@@ -186,6 +192,7 @@ class HPM: public OPC{
 class N3: public OPC {													//The R1 runs on SPI Communication
 	private:
 	uint8_t CS;															//Slave Select pin for specification. The code will only run on the default SPI pins.
+	bool dataCollect;
 	bool initCommand(byte command);
 	unsigned int CalcCRC(unsigned char data[], unsigned char nbrOfBytes);//Checksum calculator
 	
