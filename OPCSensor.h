@@ -50,7 +50,8 @@ class OPC																//Parent OPC class
 	bool getLogQuality();												//get the quality of the log
 	void initOPC();														//Initialization
 	String CSVHeader();													//Placeholders
-	String logUpdate();													
+	String logUpdate();
+	String logReadout(String name);													
 	bool readData();
 	void getData(float dataPtr[], unsigned int arrayFill);
 	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);
@@ -85,6 +86,7 @@ class Plantower: public OPC
 	void initOPC();
 	String CSVHeader();													//Overrides of OPC data functions
 	String logUpdate();
+	String logReadout(String name);
 	bool readData();
 	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
 	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);
@@ -95,32 +97,13 @@ class Plantower: public OPC
 class SPS: public OPC
 {
 	private:
-	byte buffers[40] = {0}, systemInfo [5] = {0}, MassC[16] = {0};      //Byte variables for collection and organization of data from the SPS30.
-	byte NumC[20] = {0}, AvgS[4] = {0}, data = 0, checksum = 0, SPSChecksum = 0;
 	bool altCleaned = false;
-	
-	union mass                                                          //Defines the union for mass concentration
-	{
-		byte MCA[16];
-		float MCF[4];
-	}m;
 
-	union num                                                           //Defines the union for number concentration
-	{
-		byte NCA[20];
-		float NCF[5];
-	}n;
-
-	union avg                                                           //Defines the union for average sizes
-	{
-		byte ASA[4];
-		float ASF;
-	}a;
-	
 	struct SPS30data {
-		float aver;
-		float nums[5];
 		float mas[4];
+		float nums[5];
+		float aver;		
+
 	}SPSdata;
 
 	public:
@@ -131,9 +114,10 @@ class SPS: public OPC
 	void initOPC();														//Overrides of OPC data functions and initialization
 	String CSVHeader();
 	String logUpdate();
+	String logReadout(String name);
 	bool readData();
-	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
-	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);
+//	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
+//	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);
 	bool altClean(float altitude, float cleanAlt);						//Set a function to flush the sensor at some height to clear the particles
 };
 
@@ -151,6 +135,17 @@ class R1: public OPC {													//The R1 runs on SPI Communication
 		float floatOut;
 	}sfr,sp,a,b,c;
 	
+	struct R1data{
+		uint16_t bins[16];
+		uint8_t bin1time, bin2time, bin3time, bin4time;
+		float sampleFlowRate; 
+		uint16_t temp, humid;
+		float samplePeriod;
+		uint8_t rejectCountGlitch, rejectCountLong;
+		float pm1, pm2_5, pm10;
+		unsigned int checksum;
+	} localData;
+	
 	public:
 	R1(uint8_t slave);													//Alphasense constructor
 	void powerOn();														//Power on will activate the fan, laser, and data communication
@@ -159,6 +154,7 @@ class R1: public OPC {													//The R1 runs on SPI Communication
 	void initOPC();														//Initializes the OPC
 	String CSVHeader();													//Overrrides the OPC data functions
 	String logUpdate();
+	String logReadout(String name);
 	bool readData();
 //	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
 //	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);													
@@ -192,7 +188,6 @@ class HPM: public OPC{
 class N3: public OPC {													//The R1 runs on SPI Communication
 	private:
 	uint8_t CS;															//Slave Select pin for specification. The code will only run on the default SPI pins.
-	bool dataCollect;
 	bool initCommand(byte command);
 	unsigned int CalcCRC(unsigned char data[], unsigned char nbrOfBytes);//Checksum calculator
 	
@@ -215,7 +210,8 @@ class N3: public OPC {													//The R1 runs on SPI Communication
 	void powerOff();													//Power off will deactivate these same things
 	void initOPC(char t);												//Initializes the OPC
 	String CSVHeader();													//Overrrides the OPC data functions
-	String logUpdate();													
+	String logUpdate();	
+	String logReadout(String name);												
 	bool readData();
 //	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
 //	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);													

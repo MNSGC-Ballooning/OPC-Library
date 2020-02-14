@@ -10,6 +10,7 @@ getLogQuality	KEYWORD2
 initOPC	KEYWORD2
 CSVHeader	KEYWORD2
 logUpdate	KEYWORD2
+logReadout	KEYWORD2
 readData	KEYWORD2
 getData	KEYWORD2
 setReset	KEYWORD2

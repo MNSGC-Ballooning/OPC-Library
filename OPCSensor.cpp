@@ -53,6 +53,8 @@ String OPC::logUpdate(){
 	return localDataLog;
 }
 
+String OPC::logReadout(String name){return "";}
+
 bool OPC::readData(){ return false; }
 
 void OPC::getData(float dataPtr[], unsigned int arrayFill){}
@@ -177,6 +179,80 @@ String Plantower::logUpdate(){
   return dataLogLocal;
 }
 
+String Plantower::logReadout(String name){
+	unsigned int lastLog = millis() - goodLogAge;
+	
+	String dataLogLocal = "";											//Log sample number, in flight time																							
+    dataLogLocal += String(nTot) + "," + String(lastLog) + ",";  
+    
+    if (goodLog){                  			    						//If data is in the buffer, log it
+		dataLogLocal += String(PMSdata.pm10_standard);
+		dataLogLocal += "," + String(PMSdata.pm25_standard);
+		dataLogLocal += "," + String(PMSdata.pm100_standard);
+		dataLogLocal += "," + String(PMSdata.pm10_env);
+		dataLogLocal += "," + String(PMSdata.pm25_env);
+		dataLogLocal += "," + String(PMSdata.pm100_env);
+		dataLogLocal += "," + String(PMSdata.particles_03um);
+		dataLogLocal += "," + String(PMSdata.particles_05um);
+		dataLogLocal += "," + String(PMSdata.particles_10um);
+		dataLogLocal += "," + String(PMSdata.particles_25um);
+		dataLogLocal += "," + String(PMSdata.particles_50um);
+		dataLogLocal += "," + String(PMSdata.particles_100um);
+		nTot ++;                                                   		//Total samples
+		
+		Serial.println();
+		Serial.println("=======================");
+		Serial.println(("Plantower: " + name));
+		Serial.println();
+		Serial.print("Successful Data Hits: ");
+		Serial.println(String(nTot));
+		Serial.print("Last log time: ");
+		Serial.println(String(lastLog));
+		Serial.println();
+		Serial.print(".3 microns and greater: ");
+		Serial.println(String(PMSdata.particles_03um));
+		Serial.print(".5 microns and greater: ");
+		Serial.println(String(PMSdata.particles_05um));
+		Serial.print("1 microns and greater: ");
+		Serial.println(String(PMSdata.particles_10um));
+		Serial.print("2.5 microns and greater: ");
+		Serial.println(String(PMSdata.particles_25um));
+		Serial.print("5 microns and greater: ");
+		Serial.println(String(PMSdata.particles_50um));
+		Serial.print("10 microns and greater: ");
+		Serial.println(String(PMSdata.particles_100um));
+		Serial.println("=======================");
+			
+	} else {
+		dataLogLocal += "-,-,-,-,-,-,-,-,-,-,-,-";
+		badLog++;                                                       //If there are five consecutive bad logs, the data string will print a warning
+		if (badLog >= 5){
+			goodLog = false;
+		}
+		
+		Serial.println();
+		Serial.println("=======================");
+		Serial.println(("Plantower: " + name));
+		Serial.println();
+		Serial.print("Successful Data Hits: ");
+		Serial.println(String(nTot));
+		Serial.print("Last log time: ");
+		Serial.println(String(lastLog));
+		Serial.println();
+		Serial.println("Bad log");
+		Serial.println("=======================");
+
+		if ((millis()-goodLogAge)>=resetTime){							//System reset if the reset time is tripped
+		powerOff();
+		delay(20000);
+		powerOn();
+		goodLogAge = millis();
+		}
+	}
+	
+  return dataLogLocal;
+}
+
 bool Plantower::readData(){												//Command that calls bytes from the plantower
   if (! s->available()){
     return false;
@@ -260,8 +336,7 @@ void SPS::powerOn()                                			            //SPS Power on
   s->write(0x7E);
 
   delay (100);
-  for (unsigned int q = 0; q<7; q++) data = s->read();                  //Read the response bytes
-  data = 0;
+  for (unsigned int q = 0; q<7; q++) s->read();                  //Read the response bytes
 }
 
 void SPS::powerOff()                              		                //SPS Power off command. This sends and recieves the power off frame
@@ -274,8 +349,7 @@ void SPS::powerOff()                              		                //SPS Power 
   s->write(0x7E);
 
   delay(100);
-  for (unsigned int q = 0; q<7; q++) data = s->read();                  //Read the response bytes
-  data = 0;
+  for (unsigned int q = 0; q<7; q++) s->read();                  //Read the response bytes
 }
 
 void SPS::clean()                                		                //SPS Power off command. This sends and recieves the power off frame
@@ -288,8 +362,7 @@ void SPS::clean()                                		                //SPS Power o
   s->write(0x7E);
 
   delay(100); 
-  for (unsigned int q = 0; q<7; q++) data = s->read();                  //Read the response bytes
-  data = 0;
+  for (unsigned int q = 0; q<7; q++) s->read();                  //Read the response bytes
 }
 
 void SPS::initOPC()                            			  		        //SPS initialization code. Requires input of SPS serial stream.
@@ -314,26 +387,23 @@ String SPS::logUpdate(){                          				        //This function wi
        goodLogAge = millis();
        badLog = 0;
        lastLog = millis() - goodLogAge;
-	   dataLogLocal = String(nTot++) + "," + String(lastLog);
+	   dataLogLocal = (String(nTot++) + "," + String(lastLog) + ",");
 
-   for(unsigned short k = 0; k<4; k++){                                 //This loop will populate the data string with mass concentrations.
-      if (k==0) {
-         dataLogLocal += ',' + String(m.MCF[k],6) + ',';                //Each bin from the sensor includes all of the particles from the bin
-        } else {                                                        //below it.
-         dataLogLocal += String(m.MCF[k],6) + ',';            		    
-        }
+   for(unsigned short k = 0; k<4; k++){                                 //This loop will populate the data string with mass concentrations.                                                       //below it.
+         dataLogLocal += String(SPSdata.mas[k],6) + ',';            		    
    }
 
    for(unsigned short k = 0; k<5; k++){                                 //This loop will populate the data string with number concentrations.
-        dataLogLocal += String(n.NCF[k],6) + ',';
+        dataLogLocal += String(SPSdata.nums[k],6) + ',';
    }
-    dataLogLocal += String(a.ASF,6);                                    //This adds the average particle size to the end of the bin.
+   
+   dataLogLocal += String(SPSdata.aver,6);                                    //This adds the average particle size to the end of the bin.
     
   } else {
 	 badLog ++;
 	 if (badLog >= 5) goodLog = false;	
 	 lastLog = millis() - goodLogAge;									//Good log situation the same as in the Plantower code
-	 dataLogLocal = String(nTot++) + "," + String(lastLog);
+	 dataLogLocal = String(nTot) + "," + String(lastLog);
 	 dataLogLocal += ",-,-,-,-,-,-,-,-,-,-";							//If there is bad data, the string is populated with failure symbols.              
 	 if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
 		 powerOff();													//the system will cycle and clean the dust bin.
@@ -347,97 +417,8 @@ String SPS::logUpdate(){                          				        //This function wi
 	}
 	return dataLogLocal;
   }
-
-
-bool SPS::readData(){                                     		      	//SPS data request. The system will pull data and ensure the accuracy.                                                                   
-  s->write(0x7E);                                                       //The read data function will return true if the data request is successful.
-  s->write((byte)0x00);
-  s->write(0x03);                                                       //This is the actual command
-  s->write((byte)0x00);
-  s->write(0xFC);
-  s->write(0x7E);
-
- if (! s->available()) return false;                                    //If the given serial connection is not available, the data request will fail.
-
-   if (s->peek() != 0x7E){                                              //If the sent start byte is not as expected, the data request will fail.
-     for (unsigned short j = 0; j<60; j++) data = s->read();            //The data buffer will be wiped to ensure the next data pull isn't corrupt.
-     data = 0;
-    return false;
-   }
-
-  if (s->available() < 47){                                             //If there are not enough data bytes available, the data request will fail. This
-    return false;                                                       //will not clear the data buffer, because the system is still trying to fill it.
-  }
-
-    for(unsigned short j = 0; j<5; j++){                                //This will populate the system information array with the data returned by the                  
-        systemInfo[j] = s->read();                                      //by the system about the request. This is not the actual data, but will provide
-        if (j != 0) checksum += systemInfo[j];                          //information about the data. The information is also added to the checksum.
-    }
-
-   if (systemInfo[3] != (byte)0x00){                                    //If the system indicates a malfunction of any kind, the data request will fail.
-     for (unsigned short j = 0; j<60; j++) data = s->read();            //Any data that populates the main array will be thrown out to prevent future corruption.
-     data = 0;
-    return false;
-   }
-
-byte stuffByte = 0;
-  for(unsigned short buffIndex = 0; buffIndex < 40; buffIndex++){       //This loop will populate the buffer with the data bytes.
-    buffers[buffIndex] = s->read();
-      if (buffers[buffIndex] == 0x7D) {                                 //This hex indicates that byte stuffing has occurred. The
-        stuffByte = s->read();                                          //series of if statements will determine the original value
-        if (stuffByte == 0x5E) buffers[buffIndex] = 0x7E;				//based on the following hex and replace the data.
-        if (stuffByte == 0x5D) buffers[buffIndex] = 0x7D;
-        if (stuffByte == 0x31) buffers[buffIndex] = 0x11;
-        if (stuffByte == 0x33) buffers[buffIndex] = 0x13;
-    }
-    checksum += buffers[buffIndex];                                     //The data is added to the checksum.
-  }
-
-    SPSChecksum = s->read();                                            //The provided checksum byte is read.
-    data = s->read();                                                   //The end byte of the data is read.
-
-    if (data != 0x7E){                                                  //If the end byte is bad, the data request will fail.
-       for (unsigned short j = 0; j<60; j++) data = s->read();          //At this point, there likely isn't data to throw out. However,
-       data = 0;                                                        //The removal is completed as a redundant measure to prevent corruption.
-       return false;
-    }
-
-    checksum = checksum & 0xFF;                                         //The local checksum is calculated here. The LSB is taken by the first line.
-    checksum = ~checksum;                                               //The bit is inverted by the second line.
-
-    if (checksum != SPSChecksum){                                       //If the checksums are not equal, the data request will fail.  
-      for (unsigned short j = 0; j<60; j++) data = s->read();           //Just to be certain, any remaining data is thrown out to prevent corruption.
-      data = 0;
-      checksum = 0;
-      return false;
-    }
-    
-   checksum = 0;
-   data = 0;
-
-    for (unsigned short j = 0; j<16; j++) MassC[j] = buffers[j];        //The mass concentration data is removed from the buffer.
-    for (unsigned short j = 0; j<20; j++) NumC[j] = buffers[j+16];      //The number concentration data is removed from the buffer.
-    for (unsigned short j=0; j<4; j++) AvgS[j] = buffers[j+36];         //The average size data is removed from the buffer.
-
-																		//The data is sent in reverse. This will flip the order of every four bytes
-	unsigned short flip = 0;                                            //Index of array to flip- I KNOW THIS IS REDUNDANT FOR THE FLIP IN THE FOR LOOP. However, I want flip to continue to increase.
-	unsigned short result = 0;                                          //Index of array that will be the result
-
-	for (unsigned short flipMax = 4; flipMax<21; flipMax+=4){           //This will loop through the main flipping mechanism
-		result = flipMax - 1;                                           //The result starts one lower than the flipMax because of counting from zero
-		for (flip; flip<flipMax; flip++){                               //Flipping mechanism. This flips the results of the data request. IGNORE THIS WARNING.
-			if (flipMax < 5)  a.ASA[flip] = AvgS[result];               //Flips average size. Average size only has four bytes.
-			if (flipMax < 17) m.MCA[flip] = MassC[result];              //Flips mass. Mass has four less bytes than number.
-			n.NCA[flip] = NumC[result];                                 //Flips number count.
-			result--;
-		}
-	}
-	
-  return true;                                                          //If the reading is successful, the function will return true.
-}
-
-/*
-String SPS::logUpdate(){                          				        //This function will parse the data and form loggable strings.
+  
+String SPS::logReadout(String name){     
 	unsigned int lastLog;
     String dataLogLocal; 
     if (readData()){                                                    //Read the data and determine the read success.
@@ -445,20 +426,38 @@ String SPS::logUpdate(){                          				        //This function wi
        goodLogAge = millis();
        badLog = 0;
        lastLog = millis() - goodLogAge;
-	   dataLogLocal = String(nTot++) + "," + String(lastLog);
+	   dataLogLocal = (String(nTot++) + "," + String(lastLog) + ",");
 
-   for(unsigned short k = 0; k<4; k++){                                 //This loop will populate the data string with mass concentrations.
-      if (k==0) {
-         dataLogLocal += ',' + String(SPSdata.mas[k],6) + ',';                //Each bin from the sensor includes all of the particles from the bin
-        } else {                                                        //below it.
+   for(unsigned short k = 0; k<4; k++){                                 //This loop will populate the data string with mass concentrations.                                                       //below it.
          dataLogLocal += String(SPSdata.mas[k],6) + ',';            		    
-        }
    }
 
    for(unsigned short k = 0; k<5; k++){                                 //This loop will populate the data string with number concentrations.
         dataLogLocal += String(SPSdata.nums[k],6) + ',';
    }
-    dataLogLocal += String(SPSdata.aver,6);                                    //This adds the average particle size to the end of the bin.
+   
+   dataLogLocal += String(SPSdata.aver,6);                                    //This adds the average particle size to the end of the bin.
+    
+    Serial.println();
+	Serial.println("=======================");
+	Serial.println(("SPS: " + name));
+	Serial.println();
+	Serial.print("Successful Data Hits: ");
+	Serial.println(String(nTot));
+	Serial.print("Last log time: ");
+	Serial.println(String(lastLog));
+	Serial.println();
+	Serial.print(".3 to .5 microns per cubic cm: ");
+	Serial.println(String(SPSdata.nums[0],6));
+	Serial.print(".3 to 1 microns per cubic cm: ");
+	Serial.println(String(SPSdata.nums[1],6));
+	Serial.print(".3 to 2.5 microns per cubic cm: ");
+	Serial.println(String(SPSdata.nums[2],6));
+	Serial.print(".3 to 4 microns per cubic cm: ");
+	Serial.println(String(SPSdata.nums[3],6));
+	Serial.print(".3 to 10 microns per cubic cm: ");
+	Serial.println(String(SPSdata.nums[4],6));
+	Serial.println("======================="); 
     
   } else {
 	 badLog ++;
@@ -466,6 +465,19 @@ String SPS::logUpdate(){                          				        //This function wi
 	 lastLog = millis() - goodLogAge;									//Good log situation the same as in the Plantower code
 	 dataLogLocal = "," + String(lastLog);
 	 dataLogLocal += ",-,-,-,-,-,-,-,-,-,-";							//If there is bad data, the string is populated with failure symbols.              
+	 
+	 Serial.println();
+	 Serial.println("=======================");
+	 Serial.println(("SPS: " + name));
+	 Serial.println();
+	 Serial.print("Successful Data Hits: ");
+	 Serial.println(String(nTot));
+	 Serial.print("Last log time: ");
+	 Serial.println(String(lastLog));
+	 Serial.println();
+	 Serial.println("Bad log");
+	 Serial.println("=======================");	 
+	 
 	 if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
 		 powerOff();													//the system will cycle and clean the dust bin.
 		 delay (2000);
@@ -476,10 +488,17 @@ String SPS::logUpdate(){                          				        //This function wi
 		 goodLogAge = millis();
 	 }
 	}
-	return dataLogLocal;
-  }
+	return dataLogLocal;	
+}
 
 bool SPS::readData(){
+  	byte systemInfo[5] = {0};
+	byte data = 0;
+	byte checksum = 0;
+	byte SPSChecksum = 0;
+	byte buffers[40] = {0};
+ 
+  
   s->write(0x7E);                                                       //The read data function will return true if the data request is successful.
   s->write((byte)0x00);
   s->write(0x03);                                                       //This is the actual command
@@ -491,8 +510,7 @@ bool SPS::readData(){
 
    if (s->peek() != 0x7E){                                              //If the sent start byte is not as expected, the data request will fail.
      for (unsigned short j = 0; j<60; j++) data = s->read();            //The data buffer will be wiped to ensure the next data pull isn't corrupt.
-     data = 0;
-    return false;
+	 return false;
    }
 
   if (s->available() < 47){                                             //If there are not enough data bytes available, the data request will fail. This
@@ -506,22 +524,25 @@ bool SPS::readData(){
 
    if (systemInfo[3] != (byte)0x00){                                    //If the system indicates a malfunction of any kind, the data request will fail.
      for (unsigned short j = 0; j<60; j++) data = s->read();            //Any data that populates the main array will be thrown out to prevent future corruption.
-     data = 0;
-    return false;
+     return false;
    }
 
-byte stuffByte = 0;
-  for(unsigned short buffIndex = 39; buffIndex < 0; buffIndex--){       //This loop will populate the buffer with the data bytes.
-    buffers[buffIndex] = s->read();
-      if (buffers[buffIndex] == 0x7D) {                                 //This hex indicates that byte stuffing has occurred. The
-        stuffByte = s->read();                                          //series of if statements will determine the original value
-        if (stuffByte == 0x5E) buffers[buffIndex] = 0x7E;				//based on the following hex and replace the data.
-        if (stuffByte == 0x5D) buffers[buffIndex] = 0x7D;
-        if (stuffByte == 0x31) buffers[buffIndex] = 0x11;
-        if (stuffByte == 0x33) buffers[buffIndex] = 0x13;
-    }
-    checksum += buffers[buffIndex];                                     //The data is added to the checksum.
-  }
+	byte stuffByte = 0;
+	for(unsigned short j = 3; j < 40; j+=4){      					 //This nested loop will read the bytes and convert to MSB
+		for(unsigned short i = 0; i < 4; i++){
+			unsigned short x = j - i;
+			buffers[x] = s->read();
+			
+			if (buffers[x] == 0x7D) {                                 //This hex indicates that byte stuffing has occurred. The
+				stuffByte = s->read();                                          //series of if statements will determine the original value
+				if (stuffByte == 0x5E) buffers[x] = 0x7E;				//based on the following hex and replace the data.
+				if (stuffByte == 0x5D) buffers[x] = 0x7D;
+				if (stuffByte == 0x31) buffers[x] = 0x11;
+				if (stuffByte == 0x33) buffers[x] = 0x13;
+			}
+			checksum += buffers[x];                                     //The data is added to the checksum.
+		}
+	}
 
     SPSChecksum = s->read();                                            //The provided checksum byte is read.
     data = s->read();                                                   //The end byte of the data is read.
@@ -537,19 +558,15 @@ byte stuffByte = 0;
 
     if (checksum != SPSChecksum){                                       //If the checksums are not equal, the data request will fail.  
       for (unsigned short j = 0; j<60; j++) data = s->read();           //Just to be certain, any remaining data is thrown out to prevent corruption.
-      data = 0;
-      checksum = 0;
       return false;
     }
-    
-   checksum = 0;
-   data = 0;
-
+   
   memcpy((void *)&SPSdata, (void *)buffers, 40);
 	
   return true;                      
-}*/
+}
 
+/*
 void SPS::getData(float dataPtr[], unsigned int arrayFill){				//Populate an array with the collected data
 	unsigned int i = 0;													//Below, an array is populated with particle data
 	float dataArray[10] = {m.MCF[0],m.MCF[1],m.MCF[2],m.MCF[3],n.NCF[0],n.NCF[1],n.NCF[2],n.NCF[3],n.NCF[4],a.ASF};
@@ -570,7 +587,7 @@ void SPS::getData(float dataPtr[], unsigned int arrayFill, unsigned int arraySta
 		
 		i++;
 	}
-}
+}*/
 
 bool SPS::altClean(float altitude, float cleanAlt){
 	if ((!altCleaned)&&(altitude > cleanAlt)){
@@ -699,7 +716,25 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
        lastLog = millis() - goodLogAge;
        dataLogLocal += "," + String(lastLog);
 	
-		for (int x = 0; x<27; x++){										//Data log in CSV
+		for (unsigned short i = 0; i < 16; i++){
+			dataLogLocal += "," + String(localData.bins[i]);
+		}
+		
+		dataLogLocal += "," + String(localData.bin1time);
+		dataLogLocal += "," + String(localData.bin2time);
+		dataLogLocal += "," + String(localData.bin3time);
+		dataLogLocal += "," + String(localData.bin4time);
+		
+		dataLogLocal += "," + String(localData.sampleFlowRate); 
+		dataLogLocal += "," + String(localData.temp); 
+		dataLogLocal += "," + String(localData.humid);
+		dataLogLocal += "," + String(localData.samplePeriod); 
+		dataLogLocal += "," + String(localData.pm1);
+		dataLogLocal += "," + String(localData.pm2_5);   
+		dataLogLocal += "," + String(localData.pm10);   
+		
+		
+/*		for (int x = 0; x<27; x++){										//Data log in CSV
 			if(x == 20){
 				dataLogLocal += ',';
 				dataLogLocal += String(sfr.floatOut,6);
@@ -724,7 +759,7 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 				dataLogLocal += ',';
 				dataLogLocal += String(data[x]);
 			}
-		}
+		}*/
 	} else {
 		badLog ++;
 		if (badLog >= 5) goodLog = false;								//Good log situation the same as in the Plantower code
@@ -742,6 +777,8 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 	}
 	 return dataLogLocal;
  }
+ 
+String R1::logReadout(String name){return "";}
 
 bool R1::readData(){													//Data reading system
   digitalWrite(CS,LOW);													//ADD TEMPERATURE AND HUMIDITY CALCULATIONS
@@ -765,7 +802,9 @@ bool R1::readData(){													//Data reading system
 		SPI.beginTransaction(SPISettings(R1_SPEED, MSBFIRST, SPI_MODE1));
 		digitalWrite(CS,LOW);
 		bail++;
-		if (bail >= 5) return false;
+		if (bail >= 5){
+			 return false;
+		 }
 	  }
 	  
   } while (test != 0xF3);
@@ -777,7 +816,16 @@ bool R1::readData(){													//Data reading system
 	 
   digitalWrite(CS,HIGH);
   SPI.endTransaction();													//End communciation
-  
+	
+	unsigned int calcChecksum = CalcCRC(raw,62);
+	Serial.println(String(calcChecksum));
+
+	memcpy(&localData, &raw, 64);
+	
+	Serial.println(String(localData.checksum));
+	localData.humid = (localData.humid/(pow(2,16)-1.0))*100;
+	localData.temp = -45 + 175*(localData.temp/(pow(2,16)-1.0));	
+/*  
   for (unsigned short x=0; x<16; x++){									//Convert bytes into data
     data[x] = bytes2int(raw[(x*2)], raw[(x*2+1)]);
    }
@@ -813,8 +861,10 @@ bool R1::readData(){													//Data reading system
   }
 
   data[24] = bytes2int(raw[62],raw[63]);
+*/
   
-  return (data[24] == CalcCRC(raw,62));									//Return results of the checksum
+//  return (localData.checksum == CalcCRC(raw,62));						//Return results of the checksum
+	return (localData.checksum == calcChecksum);
 
 }
 
@@ -1101,13 +1151,10 @@ bool N3::initCommand(byte command){
 	  delay(1);
 	  byte1 = byte2;
 	  byte2 = SPI.transfer(0x03);
-	  Serial.print(byte2,HEX);
-	  Serial.print(" ");
 	  delay(10);
 	  bail++;
 	  success = ((byte1 == 0x31)&&(byte2 == 0xF3));
 	  if ((byte1 != 0x31)&&(byte2 !=0x31)&&(bail > 10)){
-		Serial.println("Resetting...");
 		bail = 0;
 		superBail++;
 		digitalWrite(CS, HIGH); 		
@@ -1121,12 +1168,10 @@ bool N3::initCommand(byte command){
   
   if (success) {
 	  	byte2 = SPI.transfer(command);
-		Serial.println("Successful communication!");
 		SPI.endTransaction(); 
 		digitalWrite(CS, HIGH); 
 		return true;
   } else {
-	  Serial.println("Failed communication!");
 	  SPI.endTransaction(); 
 	  digitalWrite(CS, HIGH); 
 	  return false;
@@ -1135,66 +1180,42 @@ bool N3::initCommand(byte command){
 
 
 void N3::laserOn(){														//laser on
-	if(initCommand(0x07)){
-		Serial.println("Laser Online!");
-		return;
-	}else{
-		Serial.println("Big fail energy, trying again...");
+	if(initCommand(0x07)) return;
 		delay(20000);
-		if (initCommand(0x07)) Serial.println("Laser Online!");
-		else Serial.println("Laser Activation Failure :(");
-	 }
+		initCommand(0x07);
 }
 
 void N3::laserOff(){													//laser off
-	if(initCommand(0x06)){
-		Serial.println("Laser Offline!");
-		return;
-	}else{
-		Serial.println("Big fail energy, trying again...");
+	if(initCommand(0x06)) return;
 		delay(20000);
-		if (initCommand(0x06)) Serial.println("Laser Offline!");
-		else Serial.println("Laser Deactivation Failure :(");
-	 }
+		initCommand(0x06);
 }
 
 void N3::fanOn(){														//fan on
-	if(initCommand(0x03)){
-		Serial.println("Fan Online!");
-		return;
-	}else{
-		Serial.println("Big fail energy, trying again...");
+	if(initCommand(0x03)) return;
 		delay(20000);		
-		if (initCommand(0x03)) Serial.println("Fan Online!");
-		else Serial.println("Fan Activation Failure :(");
-	 }
+		initCommand(0x03);
 }
 
 void N3::fanOff(){														//fan off
-	if(initCommand(0x02)){
-		Serial.println("Fan Offline!");
-		return;
-	}else{
-		Serial.println("Big fail energy, trying again...");
-		delay(20000);
-		if (initCommand(0x02)) Serial.println("Fan Offline!");
-		else Serial.println("Fan Deactivation Failure :(");
-	 }
+	if(initCommand(0x02)) return;
+	delay(20000);
+	(initCommand(0x02));
 }
 
 void N3::powerOn(){
 	delay(1000);
-	laserOn();
-	delay(500);
 	fanOn();
+	delay(500);
+	laserOn();
 	delay(1000);
 }
 
 void N3::powerOnPump(){
 	delay(1000);
-	laserOn();
-	delay(50);
 	fanOff();
+	delay(50);
+	laserOn();
 	delay(1000);
 }
 
@@ -1212,15 +1233,14 @@ void N3::initOPC(char t){
 	digitalWrite(CS,HIGH);												//Pull the pin up so there is no data leakage
 	delay(2500);
 	if (t == 'p') powerOnPump();
-	else powerOn();		
-	dataCollect = true;												
+	else powerOn();												
 }
 
 String N3::CSVHeader(){
 	String header = "hits,lastLog,Bin0,Bin1,Bin2,Bin3,Bin4,Bin5,Bin6,Bin7,Bin8,Bin9,";
 	header += "Bin10,Bin11,Bin12,Bin13,Bin14,Bin15,Bin16,Bin17,Bin18,Bin19,";
 	header += "Bin20,Bin21,Bin22,Bin23,Bin1 Time,Bin3 Time,Bin5 Time,Bin7 Time,";
-	header += "Sampling Period,Flow Rate,Temp,Humidity,PM1,PM2_5,PM10,fanRev,laser";
+	header += "Sampling Period,Flow Rate,Temp,Humidity,PM1,PM2_5,PM10";
 	return header;
 }
 
@@ -1246,26 +1266,26 @@ String N3::logUpdate(){
 	   dataLogLocal += "," + String(localData.humid); 
 	   dataLogLocal += "," + String(localData.pm1);  
 	   dataLogLocal += "," + String(localData.pm2_5);
-	   dataLogLocal += "," + String(localData.pm10);
-	   dataLogLocal += "," + String(localData.fanRevCount);
-	   dataLogLocal += "," + String(localData.laserStatus);		   		   		   	    	     	      	   	      
+	   dataLogLocal += "," + String(localData.pm10);	   		   		   	    	     	      	   	      
 	} else {
 		lastLog = millis() - goodLogAge;
 		badLog ++;
 		if (badLog >= 5) goodLog = false;								//Good log situation the same as in the Plantower code
 		dataLogLocal += "," + String(lastLog);
-		dataLogLocal += ",-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-";	//37                   
+		dataLogLocal += ",-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-";	//35                   
 																		//If there is bad data, the string is populated with failure symbols.
-	/*	if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
+		if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
 			powerOff();													//the system will cycle and clean the dust bin.
 			delay (2000);												//The system now has a function checksum
 			powerOn();
 			delay (100);
 			goodLogAge = millis();
-		} */
+		}
 	}
 	 return dataLogLocal;
 }
+
+String N3::logReadout(String name){return "";}
 
 bool N3::readData(){ 
 	byte transmitData[86] = {0};
@@ -1279,32 +1299,23 @@ bool N3::readData(){
 	
 	digitalWrite(CS,LOW);
 
-	if (dataCollect){
-		Serial.println("Real Attempt");	//REMOVE THIS
 		while (!success && (bail < 25)){ 
 			byte1 = byte2;
 			delay(10);
 			byte2 = SPI.transfer(0x30);
-			Serial.print(byte2,HEX);
-			Serial.print(" ");
 			bail++;
 			success = ((byte1 == 0x31)&&(byte2 == 0xF3));
 		}
   
-		if (success) {
-				Serial.println("Successful communication!");
-		} else {
+		if (!success) {
 			digitalWrite(CS, HIGH);
-			SPI.endTransaction();
-			Serial.println("Failed communication!");  	  
+			SPI.endTransaction(); 
 			return false;
 		}
   
 			for (int i = 0; i<86; i++){
 				delayMicroseconds(10);
 				transmitData[i] = SPI.transfer(0x00);
-				Serial.print(transmitData[i],HEX);
-				Serial.print(" ");
 			}
 
 			digitalWrite(CS, HIGH); 	 
@@ -1312,21 +1323,10 @@ bool N3::readData(){
 	
 			memcpy(&localData, &transmitData, 86);	
 	
-			if (!(localData.checkSum == CalcCRC(transmitData, 84))) Serial.println("Bad checksum!");
-			dataCollect = false;
-			//	return (localData.checkSum == CalcCRC(transmitData, 84));
-			return true;
-		} else {
-			dataCollect = true;
-			Serial.println("Fakin it");
-			SPI.beginTransaction(SPISettings(N3_SPEED, MSBFIRST, SPI_MODE1));
-			digitalWrite(CS,LOW);
-			
-			for (unsigned short i = 0; i < 5; i++){
-				byte1 = SPI.transfer(0x00);
-			}	
-			return false;
-		}
+			localData.humid = (localData.humid/(pow(2,16)-1.0))*100;
+			localData.temp = -45 + 175*(localData.temp/(pow(2,16)-1.0));
+	
+			return (localData.checkSum == CalcCRC(transmitData, 84));
 }
 	
 unsigned int N3::CalcCRC(unsigned char data[], unsigned char nbrOfBytes){
