@@ -733,33 +733,6 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 		dataLogLocal += "," + String(localData.pm2_5);   
 		dataLogLocal += "," + String(localData.pm10);   
 		
-		
-/*		for (int x = 0; x<27; x++){										//Data log in CSV
-			if(x == 20){
-				dataLogLocal += ',';
-				dataLogLocal += String(sfr.floatOut,6);
-				
-			} else if(x == 23){
-				dataLogLocal += ',';
-				dataLogLocal += String(sp.floatOut,6);
-				
-			} else if(x == 24){
-				dataLogLocal += ',';
-				dataLogLocal += String(a.floatOut,6);
-				
-			} else if(x == 25){
-				dataLogLocal += ',';
-				dataLogLocal += String(b.floatOut,6);				
-				
-			} else if(x == 26){
-				dataLogLocal += ',';
-				dataLogLocal += String(c.floatOut,6);				
-				
-			} else {
-				dataLogLocal += ',';
-				dataLogLocal += String(data[x]);
-			}
-		}*/
 	} else {
 		badLog ++;
 		if (badLog >= 5) goodLog = false;								//Good log situation the same as in the Plantower code
@@ -778,94 +751,136 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 	 return dataLogLocal;
  }
  
-String R1::logReadout(String name){return "";}
+String R1::logReadout(String name){
+	unsigned int lastLog;
+	String dataLogLocal = String(nTot);
+	
+	if (readData()){
+	   goodLog = true;                                                  
+       goodLogAge = millis();
+       badLog = 0;
+       nTot++;
+       lastLog = millis() - goodLogAge;
+       dataLogLocal += "," + String(lastLog);
+	
+		for (unsigned short i = 0; i < 16; i++){
+			dataLogLocal += "," + String(localData.bins[i]);
+		}
+		
+		dataLogLocal += "," + String(localData.bin1time);
+		dataLogLocal += "," + String(localData.bin2time);
+		dataLogLocal += "," + String(localData.bin3time);
+		dataLogLocal += "," + String(localData.bin4time);
+		
+		dataLogLocal += "," + String(localData.sampleFlowRate); 
+		dataLogLocal += "," + String(localData.temp); 
+		dataLogLocal += "," + String(localData.humid);
+		dataLogLocal += "," + String(localData.samplePeriod); 
+		dataLogLocal += "," + String(localData.pm1);
+		dataLogLocal += "," + String(localData.pm2_5);   
+		dataLogLocal += "," + String(localData.pm10);   
+		
+		Serial.println();
+		Serial.println("=======================");
+		Serial.println(("R1: " + name));
+		Serial.println();
+		Serial.print("Successful Data Hits: ");
+		Serial.println(String(nTot));
+		Serial.print("Last log time: ");
+		Serial.println(String(lastLog));
+		Serial.println();
+		Serial.print("Bins 1: ");
+		for (unsigned short i = 0; i < 16; i++){
+			Serial.print("," + String(localData.bins[i]));
+		}
+		Serial.println();
+		//FINISH WITH BIN TIMES
+		
+	} else {
+		badLog ++;
+		if (badLog >= 5) goodLog = false;								//Good log situation the same as in the Plantower code
+		lastLog = millis() - goodLogAge;
+		dataLogLocal += "," + String(lastLog);
+		dataLogLocal += ",-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-";	                   
+		
+		Serial.println();
+		Serial.println("=======================");
+		Serial.println(("R1: " + name));
+		Serial.println();
+		Serial.print("Successful Data Hits: ");
+		Serial.println(String(nTot));
+		Serial.print("Last log time: ");
+		Serial.println(String(lastLog));
+		Serial.println();
+		Serial.println("Bad log");
+		Serial.println("=======================");
+																		//If there is bad data, the string is populated with failure symbols.
+		if ((millis()-goodLogAge)>=resetTime) {							//If the age of the last good log exceeds the automatic reset trigger,
+			powerOff();													//the system will cycle and clean the dust bin.
+			delay (2000);												//The system now has a function checksum
+			powerOn();
+			delay (100);
+			goodLogAge = millis();
+		}
+	}
+	 return dataLogLocal;
+}
 
 bool R1::readData(){													//Data reading system
-  digitalWrite(CS,LOW);													//ADD TEMPERATURE AND HUMIDITY CALCULATIONS
-  SPI.beginTransaction(SPISettings(R1_SPEED, MSBFIRST, SPI_MODE1));
-
-  byte test = 0x00;
-  byte raw[64] = {0};
-  unsigned short loopy = 0;
-  unsigned short bail = 0;
-  
-  do{																	//Attempt to communicate
-	  delay(10);
-	  test = SPI.transfer(0x30);
-	  loopy++;
-  
-	  if (loopy > 20){
-		digitalWrite(CS, HIGH);                                          
-		SPI.endTransaction();
-		delay(1000);
-		loopy = 0;
-		SPI.beginTransaction(SPISettings(R1_SPEED, MSBFIRST, SPI_MODE1));
-		digitalWrite(CS,LOW);
-		bail++;
-		if (bail >= 5){
-			 return false;
-		 }
-	  }
-	  
-  } while (test != 0xF3);
-  
-	for (unsigned short i = 0; i < 64; i++){							//Pull data
-		delayMicroseconds(20);
-		raw[i] = SPI.transfer(0x30); 
-	 }
-	 
-  digitalWrite(CS,HIGH);
-  SPI.endTransaction();													//End communciation
+	byte transmitData[64] = {0};
 	
-	unsigned int calcChecksum = CalcCRC(raw,62);
-	Serial.println(String(calcChecksum));
-
-	memcpy(&localData, &raw, 64);
+	byte byte1 = 0x00;
+	byte byte2 = 0x00; 
+	unsigned short bail = 0;
+	bool success = false;
+																		//Open data translation
+	SPI.beginTransaction(SPISettings(N3_SPEED, MSBFIRST, SPI_MODE1));
 	
-	Serial.println(String(localData.checksum));
-	localData.humid = (localData.humid/(pow(2,16)-1.0))*100;
-	localData.temp = -45 + 175*(localData.temp/(pow(2,16)-1.0));	
-/*  
-  for (unsigned short x=0; x<16; x++){									//Convert bytes into data
-    data[x] = bytes2int(raw[(x*2)], raw[(x*2+1)]);
-   }
+	digitalWrite(CS,LOW);
 
-  for (int x = 16; x<20; x++){
-    data[x] = raw[x+16];
-  }
-
-  for (unsigned short x = 0; x<4; x++){
-    sfr.byteIn[x] = raw[x+36];
-  }
-
-  data[20] = bytes2int(raw[40], raw[41]);
-  data[21] = bytes2int(raw[42], raw[43]);
-
-  for (unsigned short x = 0; x<4; x++){
-    sp.byteIn[x] = raw[x+44];
-  }
-
-  data[22] = raw[48];
-  data[23] = raw[49];
-
-  for (unsigned short x = 0; x<4; x++){
-    a.byteIn[x] = raw[x+50];
-  }
-
-  for (unsigned short x = 0; x<4; x++){
-    b.byteIn[x] = raw[x+54];
-  }
-
-  for (unsigned short x = 0; x<4; x++){
-    c.byteIn[x] = raw[x+58];
-  }
-
-  data[24] = bytes2int(raw[62],raw[63]);
-*/
+		while (!success && (bail < 25)){ 
+			byte1 = byte2;
+			delay(10);
+			byte2 = SPI.transfer(0x30);
+			bail++;
+			success = ((byte1 == 0x31)&&(byte2 == 0xF3));
+		}
   
-//  return (localData.checksum == CalcCRC(raw,62));						//Return results of the checksum
-	return (localData.checksum == calcChecksum);
+		if (!success) {
+			digitalWrite(CS, HIGH);
+			SPI.endTransaction(); 
+			return false;
+		}
 
+			for (int i = 0; i<64; i++){
+				delayMicroseconds(10);
+				transmitData[i] = SPI.transfer(0x00);
+			}
+
+			digitalWrite(CS, HIGH); 	 
+			SPI.endTransaction();
+
+			memcpy(&localData, &transmitData, 50);						//MEMCPY STILL WONT FULLY WORK????
+	
+			localData.humid = (localData.humid/(pow(2,16)-1.0))*100;
+			localData.temp = -45 + 175*(localData.temp/(pow(2,16)-1.0));
+	
+			union pmData{
+				byte inputs[4];
+				float outputs;
+			}pmInfo[3];
+			
+			 for (unsigned short i = 0; i < 3; i++){
+				 for (unsigned short j = 0; j < 4; j++){
+					 pmInfo[i].inputs[j] = transmitData[50 + i*4 + j];
+				 }
+			 }
+			 localData.pm1 = pmInfo[0].outputs;
+			 localData.pm2_5 = pmInfo[1].outputs;
+			 localData.pm10 = pmInfo[2].outputs;
+			 
+			 localData.checksum = bytes2int(transmitData[62],transmitData[63]);
+		 	 return (localData.checksum == CalcCRC(transmitData, 62));
 }
 
 unsigned int R1::CalcCRC(unsigned char data[], unsigned char nbrOfBytes) {
@@ -1151,6 +1166,7 @@ bool N3::initCommand(byte command){
 	  delay(1);
 	  byte1 = byte2;
 	  byte2 = SPI.transfer(0x03);
+	  Serial.println(byte2,HEX);
 	  delay(10);
 	  bail++;
 	  success = ((byte1 == 0x31)&&(byte2 == 0xF3));
@@ -1312,12 +1328,14 @@ bool N3::readData(){
 			SPI.endTransaction(); 
 			return false;
 		}
-  
+			Serial.println();
 			for (int i = 0; i<86; i++){
 				delayMicroseconds(10);
 				transmitData[i] = SPI.transfer(0x00);
+				Serial.print(transmitData[i],HEX);
+				Serial.print(" ");
 			}
-
+			Serial.println();
 			digitalWrite(CS, HIGH); 	 
 			SPI.endTransaction();
 	

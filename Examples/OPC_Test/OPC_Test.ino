@@ -2,17 +2,18 @@
 #include <Wire.h>
 
 #define PMS_SERIAL Serial4                                    //Define the serial ports!
-#define SPS_SERIAL Serial3
+#define SPS_SERIAL Serial5
 //#define HPM_SERIAL Serial5
 
 #define logRate 4000                                          //Establish a log rate
 #define slavePin 15                                           //Establish a slave pin
+#define slave2 21
 
-//Plantower PlanA(&PMS_SERIAL, logRate);                        //Construct the objects
-//SPS SpsA(&SPS_SERIAL);
+Plantower PlanA(&PMS_SERIAL, logRate);                        //Construct the objects
+SPS SpsA(&SPS_SERIAL);
 R1 r1A(slavePin);
 //HPM hpmA(&HPM_SERIAL);
-//N3 n3A(slavePin);
+//N3 n3A(slave2);
 
 unsigned long Timer[3] = {1,1500,6000};                       //These are the timers for the loops- not critical to operation
 unsigned long prevTime[3] = {0};                              
@@ -36,12 +37,12 @@ void setup() {
 //  Serial.println("Plantower active!");
 //  SpsA.initOPC();
 //  Serial.println("SPS active!");
+  n3A.initOPC('d');
+  Serial.println("N3 active!");
   r1A.initOPC();
   Serial.println("R1 active!");
 //  hpmA.initOPC();
 //  Serial.println("Honeywell active!");
-//    n3A.initOPC('d');
-//    Serial.println("N3 active!");
   delay(2000);                                                //The particle counters will not collect accurate data until 30 seconds after being turned on
   Serial.println("System initialized!");
 }
@@ -66,7 +67,7 @@ if (millis()-prevTime[2]>=Timer[2]){                          //4000ms loop
 //  Serial.println("SPS: " + SpsA.logUpdate());                 //Print the updates in CSV format
   Serial.println("R1: " + r1A.logUpdate());
 //  Serial.println("HPM: " + hpmA.logUpdate());
-//  Serial.println("N3: " + n3A.logUpdate());
+  Serial.println("N3: " + n3A.logUpdate());
 
 //  Serial.println(PlanA.logReadout("OPC 1"));
 //  Serial.println(SpsA.logReadout("OPC 2"));

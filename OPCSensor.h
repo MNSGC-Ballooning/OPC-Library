@@ -129,12 +129,6 @@ class R1: public OPC {													//The R1 runs on SPI Communication
 	uint16_t data[25];													//Data arrays
 	unsigned int CalcCRC(unsigned char data[], unsigned char nbrOfBytes);//Checksum calculator
 	
-	union byteToFloat                                                   //Defines the union for sample flow rate, sampling period, and PM bins
-	{
-		byte byteIn[4];
-		float floatOut;
-	}sfr,sp,a,b,c;
-	
 	struct R1data{
 		uint16_t bins[16];
 		uint8_t bin1time, bin2time, bin3time, bin4time;
