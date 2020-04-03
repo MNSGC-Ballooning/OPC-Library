@@ -5,7 +5,6 @@ Written Summer 2019
 
 These are the files for the OPC library (OPCSensor.h). This will run any
 optical particle counters used for MURI that do not have independent logging capabilities.
-All particle counters will need to be run in loops of different speeds.
 Serial begin must be called separately for systems that run through a serial port.
 The library has been optimized for Teensy 3.5/3.6, but should work on any system.
 A count of total successful hits precedes the data from the sensors.
@@ -18,26 +17,32 @@ A count of total successful hits precedes the data from the sensors.
 
 The Plantower PMS 5003 runs the read data function as fast as possible, and can
 record new data every 2.3 seconds. The PMS5003 serial is 9600 baud. The Plantower has
-6 data points.
+8 data points.
  
 The Sensirion SPS 30 runs the read data function with the record data function, and
 can record new data every 1 seconds. The SPS30 serial is 115200 baud. The
-SPS 30 is configured for UART communication. I2C communication is not supported.
-The SPS 30 has 10 data points.
+SPS 30 is configured for UART communication. I2C communication is not yet functional.
+The SPS 30 has 12 data points.
 
 The Alphasense R1 runs the read data function with the log update function,
 and can record new data every 1 seconds. The R1 runs on SPI. As of the latest
 update, the R1 can only run on the primary SPI bus. The Alphasense R1 has 
-27 data points.
+29 data points.
+
+The Alphasense N3 runs the read data function with the log update function,
+and can record new data every 1 seconds. The N3 runs on SPI. As of the latest
+update, the N3 can only run on the primary SPI bus. The Alphasense N3 has
+34 data points.
 
 The Honeywell HPMA115S0-004 runs the read data function with the log update function,
 and can record new data every 1 seconds. The HPM serial is 9600 baud. The HPM
-has 4 data points.
+has 4 data points. This system is no longer supported.
 
-The Plantower logs the number of hits, Mass Concentrations 1um, 2.5um, 10um, environment 1um, 2.5um, 10um, Number Concentrations 0.3um, 0.5um, 1.0um, 2.5um, 5.0um, 10.0um.
-The SPS 30 logs the number of hits, Mass Concentrations 1um, 2.5um, 4.0um, 10um, Number Concentrations inclusive  0.3um - 0.5um, 1um, 2.5um, 4.0um, 10um, Average Particle size.
-The Alphasense R1 logs the number of hits, Number Concentrations 00.4um, 00.7um, 01.1um, 01.5um, 01.9um, 02.4um, 03um, 04um, 05um, 06um, 07um, 08um, 09um, 10um, 11um, 12um, 12.4um, Bin1 Time, Bin3 Time, Bin5 Time, Bin7 Time, Flow Rate, Temp, Humidity, Sample Period, PMA, PMB, PMC.
+The Plantower logs the number of hits, the time since the last good log, Mass Concentrations 1um, 2.5um, 10um, environment 1um, 2.5um, 10um, Number Concentrations 0.3um, 0.5um, 1.0um, 2.5um, 5.0um, 10.0um.
+The SPS 30 logs the number of hits, the time since the last good log, Mass Concentrations 1um, 2.5um, 4.0um, 10um, Number Concentrations inclusive  0.3um - 0.5um, 1um, 2.5um, 4.0um, 10um, Average Particle size.
+The Alphasense R1 logs the number of hits, the time since the last good log, Number Concentrations 00.4um, 00.7um, 01.1um, 01.5um, 01.9um, 02.4um, 03um, 04um, 05um, 06um, 07um, 08um, 09um, 10um, 11um, 12um, 12.4um, Bin1 Time, Bin3 Time, Bin5 Time, Bin7 Time, Flow Rate, Temp, Humidity, Sample Period, PMA, PMB, PMC.
 The HPM logs the number of hits, Mass Concentrations 1um, 2.5um, 4.0um, 10um.
+The Alphasense N3 logs the number of hits, the time since the last good log, 24 Number Concentrations, bin time 1, bin time 2, bin time 3, bin time 4, sample period, sample flow rate, temperature, humidity, PM 1.0, PM 2.5, PM10
 
 
 
@@ -71,6 +76,9 @@ modify the code to suit your specific needs.
 Data from the first 30 seconds of powering on the sensors will not be reliable,
 because the fans must reach operating speed.
 
+The Alphasense N3 and R1 do not currently cooperate on the same SPI bus.
+The SPS30 I2C is currently nonfunctional.
+
 
 
 ----------Commands for OPCSensor Library----------
@@ -87,8 +95,6 @@ All OPC:
  - .CSVHeader() - will provide a header for the logUpdate data string (String)
  - .logUpdate() - will return a data string in CSV format (String)
  - .readData() - will read the data and return a bool indicating success (bool)
- - .getData(array, arraySize) - will save data as floats into the passed arrays (void)
- - .getData(array, arraySize, arrayStart) - will save data as floats into passed arrays starting deeper in both the data and the provided array (void)
  - .setReset(int) - will manually set the automatic bad log reset time (void). The default is 20 minutes of constantly poor logging. This will cause a time delay 
 					of approximately 20 seconds in the code operation.
 
@@ -99,10 +105,17 @@ Plantower
 - .activeMode() - will spam data like there is no tomorrow (void)
 
 SPS
+- For I2C communication, construct with an I2C port name and pins (Wire#,I2C_PINS_##_##). You will not need to begin the wire connection.
+		- Note that the I2C_PINS_##_## is a enumerated class within i2c_t3 that allows for use of alternate wire pins. Simply input the numbers of the pins
+		  used, starting with the lower pin. For example, for Wire0 (or just Wire) on a Teensy 3.5/3.6 on the default pins, use I2C_PINS_18_19
 - .clean() - used to clean the system (void) (called by initOPC)
 
 R1
-- constructed with a slave pin instead of a serial line.
+- constructed with a slave pin input instead of a serial line.
+
+N3
+- constructed with a slave pin input instead of a serial line.
+- .initOPC(char), where if the char is a 'p', the system will initialize in pump mode, instead of fan mode.
 
 HPM
 - .autoSendOn() - will automatically send data to the microcontroller (void) (Not configured with logUpdate, must call readData as fast as possible)

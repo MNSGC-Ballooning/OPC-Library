@@ -1,17 +1,17 @@
 #include <OPCSensor.h>                                        //Include the library!
 #include <Wire.h>
 
-#define PMS_SERIAL Serial4                                    //Define the serial ports!
-#define SPS_SERIAL Serial5
+//#define PMS_SERIAL Serial4                                    //Define the serial ports!
+#define SPS_SERIAL Serial1
 //#define HPM_SERIAL Serial5
 
 #define logRate 4000                                          //Establish a log rate
 #define slavePin 15                                           //Establish a slave pin
 #define slave2 21
 
-Plantower PlanA(&PMS_SERIAL, logRate);                        //Construct the objects
+//Plantower PlanA(&PMS_SERIAL, logRate);                        //Construct the objects
 SPS SpsA(&SPS_SERIAL);
-R1 r1A(slavePin);
+//R1 r1A(slavePin);
 //HPM hpmA(&HPM_SERIAL);
 //N3 n3A(slave2);
 
@@ -28,19 +28,19 @@ void setup() {
   delay (100);
   Serial.println("Serial active!");
 //  PMS_SERIAL.begin(9600);                                     //Begin the serial connections!
-//  SPS_SERIAL.begin(115200);
+  SPS_SERIAL.begin(115200);
 //  HPM_SERIAL.begin(9600);
 //  Wire.begin();
   delay(1000);                                                //Delay to ensure connection, can be much shorter
 
 //  PlanA.initOPC();                                            //Initialize objects
 //  Serial.println("Plantower active!");
-//  SpsA.initOPC();
-//  Serial.println("SPS active!");
-  n3A.initOPC('d');
-  Serial.println("N3 active!");
-  r1A.initOPC();
-  Serial.println("R1 active!");
+  SpsA.initOPC();
+  Serial.println("SPS active!");
+//  n3A.initOPC('d');
+//  Serial.println("N3 active!");
+//  r1A.initOPC();
+//  Serial.println("R1 active!");
 //  hpmA.initOPC();
 //  Serial.println("Honeywell active!");
   delay(2000);                                                //The particle counters will not collect accurate data until 30 seconds after being turned on
@@ -64,10 +64,10 @@ if (millis()-prevTime[2]>=Timer[2]){                          //4000ms loop
   prevTime[2] = millis();
 
 //  Serial.println("Plan: " + PlanA.logUpdate());
-//  Serial.println("SPS: " + SpsA.logUpdate());                 //Print the updates in CSV format
-  Serial.println("R1: " + r1A.logUpdate());
+  Serial.println("SPS: " + SpsA.logUpdate());                 //Print the updates in CSV format
+//  Serial.println("R1: " + r1A.logUpdate());
 //  Serial.println("HPM: " + hpmA.logUpdate());
-  Serial.println("N3: " + n3A.logUpdate());
+//  Serial.println("N3: " + n3A.logUpdate());
 
 //  Serial.println(PlanA.logReadout("OPC 1"));
 //  Serial.println(SpsA.logReadout("OPC 2"));

@@ -57,10 +57,6 @@ String OPC::logReadout(String name){return "";}
 
 bool OPC::readData(){ return false; }
 
-void OPC::getData(float dataPtr[], unsigned int arrayFill){}
-
-void OPC::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){}
-
 void OPC::powerOn(){}
 
 void OPC::powerOff(){}
@@ -294,87 +290,100 @@ bool Plantower::readData(){												//Command that calls bytes from the plant
   return true;
 }
 
-void Plantower::getData(float dataPtr[], unsigned int arrayFill){		//Will populate data into a provided array
-	unsigned int i = 0;
-	uint32_t dataArray[12] = {PMSdata.pm10_standard,PMSdata.pm25_standard,PMSdata.pm100_standard,PMSdata.pm10_env,PMSdata.pm25_env,PMSdata.pm100_env,PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
-	
-	while ((i<arrayFill)&&(i<12)){										//Will fill array or provide all data, whichever comes first
-		dataPtr[i]=dataArray[i];
-		
-		i++;
-	}
-}
-
-void Plantower::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
-	unsigned int i = arrayStart;										//Same process as above, but a starting point in the external array can be chosen
-	uint32_t dataArray[12] = {PMSdata.pm10_standard,PMSdata.pm25_standard,PMSdata.pm100_standard,PMSdata.pm10_env,PMSdata.pm25_env,PMSdata.pm100_env,PMSdata.particles_03um,PMSdata.particles_05um,PMSdata.particles_10um,PMSdata.particles_25um,PMSdata.particles_50um,PMSdata.particles_100um};
-	
-	while ((i<arrayFill)&&((i-arrayStart)<12)){		
-		dataPtr[i]=dataArray[i-arrayStart];
-		
-		i++;
-	}
-}
-
 
 
 //////////SPS//////////
 
 
 
-SPS::SPS(Stream* ser) : OPC(ser) {}										//Initialize stream using OPC constructor
+
+SPS::SPS(i2c_t3 wireBus, i2c_pins pins) : OPC()							//I2C constructor for SPS object
+{
+	SPSWire = &wireBus;
+	SPSpins = pins;
+	iicSystem = true;
+}
+
+SPS::SPS(Stream* ser) : OPC(ser) {}										//Initialize stream using base OPC constructor
 
 void SPS::powerOn()                                			            //SPS Power on command. This sends and recieves the power on frame
 {
-  s->write(0x7E);                                                       //Send startup frame
-  s->write((byte)0x00);
-  s->write((byte)0x00);                                                 //This is the actual command
-  s->write(0x02);
-  s->write(0x01);
-  s->write(0x03);
-  s->write(0xF9);
-  s->write(0x7E);
+	if (!iicSystem){													//If the system is running serial...
+		s->write(0x7E);                                                 //Send startup frame
+		s->write((byte)0x00);
+		s->write((byte)0x00);                                           //This is the actual command
+		s->write(0x02);
+		s->write(0x01);
+		s->write(0x03);
+		s->write(0xF9);
+		s->write(0x7E);
 
-  delay (100);
-  for (unsigned int q = 0; q<7; q++) s->read();                  //Read the response bytes
+		delay (100);
+		for (unsigned int q = 0; q<7; q++) s->read();                   //Read the response bytes
+		
+	} else {															//If the system is running I2C...
+		byte data[2] = {0x03,0x00};										//Data to write to set proper mode
+		SPSWire->beginTransmission(SPS_ADDRESS);
+		SPSWire->write(0x0010);											//Set Pointer
+		SPSWire->write(data[0]);										//Write power on Data
+		SPSWire->write(data[1]);
+		SPSWire->write(CalcCrc(data));									//Every two bytes requires a checksum
+		SPSWire->endTransmission();
+	}
 }
 
 void SPS::powerOff()                              		                //SPS Power off command. This sends and recieves the power off frame
 {
-  s->write(0x7E);                                                       //Send shutdown frame
-  s->write((byte)0x00);
-  s->write(0x01);                                                       //This is the actual command
-  s->write((byte)0x00);
-  s->write(0xFE);
-  s->write(0x7E);
+	if(!iicSystem){														//If the system is running serial...	
+		s->write(0x7E);                                                 //Send shutdown frame
+		s->write((byte)0x00);
+		s->write(0x01);                                                 //This is the actual command
+		s->write((byte)0x00);
+		s->write(0xFE);
+		s->write(0x7E);
 
-  delay(100);
-  for (unsigned int q = 0; q<7; q++) s->read();                  //Read the response bytes
+		delay(100);
+		for (unsigned int q = 0; q<7; q++) s->read();                   //Read the response bytes
+	} else {															//If the system is running I2C...
+		SPSWire->beginTransmission(SPS_ADDRESS);
+		SPSWire->write(0x0104);											//Set Pointer
+		SPSWire->endTransmission();
+	}
 }
 
 void SPS::clean()                                		                //SPS Power off command. This sends and recieves the power off frame
 {
-  s->write(0x7E);                                                       //Send clean frame
-  s->write((byte)0x00);
-  s->write(0x56);                                                       //This is the actual command
-  s->write((byte)0x00);
-  s->write(0xA9);
-  s->write(0x7E);
+	if(!iicSystem){														//If the system is running serial...
+		s->write(0x7E);                                                 //Send clean frame
+		s->write((byte)0x00);
+		s->write(0x56);                                                 //This is the actual command
+		s->write((byte)0x00);
+		s->write(0xA9);
+		s->write(0x7E);
 
-  delay(100); 
-  for (unsigned int q = 0; q<7; q++) s->read();                  //Read the response bytes
+		delay(100); 
+		for (unsigned int q = 0; q<7; q++) s->read();                   //Read the response bytes
+	} else {															//If the system is running I2C...
+		SPSWire->beginTransmission(SPS_ADDRESS);
+		SPSWire->write(0x5607);											//Set Pointer
+		SPSWire->endTransmission();
+	}
 }
 
 void SPS::initOPC()                            			  		        //SPS initialization code. Requires input of SPS serial stream.
 {
 	OPC::initOPC();														//Calls original init
 	
-    powerOn();                                       	                //Sends SPS active measurement command
-    delay(100);
-    clean();                                              		        //Sends fan clean command.
+	if(iicSystem) SPSWire->begin(I2C_MASTER,0x69,SPSpins,I2C_PULLUP_EXT,I2C_RATE_100); //Begin the wire if I2C with required specifications
+	
+	powerOn();                                       	            	//Sends SPS active measurement command
+	delay(100);
+	clean();															//clean to start. This does nothing if attached to the pump
+	
+	
 }
 
-String SPS::CSVHeader(){												//Returns a data header in CSV formate
+String SPS::CSVHeader(){												//Returns the .logUpdate() data header in CSV format
 	String header = "hits,lastLog,MC-1um,MC-2.5um,MC-4.0um,MC-10um,NC-0.5um,NC-1um,NC-2.5um,NC-4.0um,NC-10um,Avg. PM";
 	return header;
 }
@@ -397,7 +406,7 @@ String SPS::logUpdate(){                          				        //This function wi
         dataLogLocal += String(SPSdata.nums[k],6) + ',';
    }
    
-   dataLogLocal += String(SPSdata.aver,6);                                    //This adds the average particle size to the end of the bin.
+   dataLogLocal += String(SPSdata.aver,6);                              //This adds the average particle size to the end of the bin.
     
   } else {
 	 badLog ++;
@@ -436,9 +445,9 @@ String SPS::logReadout(String name){
         dataLogLocal += String(SPSdata.nums[k],6) + ',';
    }
    
-   dataLogLocal += String(SPSdata.aver,6);                                    //This adds the average particle size to the end of the bin.
+   dataLogLocal += String(SPSdata.aver,6);                              //This adds the average particle size to the end of the bin.
     
-    Serial.println();
+    Serial.println();													//Clean serial monitor print
 	Serial.println("=======================");
 	Serial.println(("SPS: " + name));
 	Serial.println();
@@ -466,7 +475,7 @@ String SPS::logReadout(String name){
 	 dataLogLocal = "," + String(lastLog);
 	 dataLogLocal += ",-,-,-,-,-,-,-,-,-,-";							//If there is bad data, the string is populated with failure symbols.              
 	 
-	 Serial.println();
+	 Serial.println();													//clean serial print
 	 Serial.println("=======================");
 	 Serial.println(("SPS: " + name));
 	 Serial.println();
@@ -492,110 +501,140 @@ String SPS::logReadout(String name){
 }
 
 bool SPS::readData(){
-  	byte systemInfo[5] = {0};
-	byte data = 0;
-	byte checksum = 0;
-	byte SPSChecksum = 0;
-	byte buffers[40] = {0};
- 
-  
-  s->write(0x7E);                                                       //The read data function will return true if the data request is successful.
-  s->write((byte)0x00);
-  s->write(0x03);                                                       //This is the actual command
-  s->write((byte)0x00);
-  s->write(0xFC);
-  s->write(0x7E);
+	byte buffers[40] = {0};												//Reading buffer
 
- if (! s->available()) return false;                                    //If the given serial connection is not available, the data request will fail.
+	if(!iicSystem){														//If the SPS is configured in serial mode
+		byte systemInfo[5] = {0};
+		byte data = 0;
+		byte checksum = 0;
+		byte SPSChecksum = 0;
 
-   if (s->peek() != 0x7E){                                              //If the sent start byte is not as expected, the data request will fail.
-     for (unsigned short j = 0; j<60; j++) data = s->read();            //The data buffer will be wiped to ensure the next data pull isn't corrupt.
-	 return false;
-   }
 
-  if (s->available() < 47){                                             //If there are not enough data bytes available, the data request will fail. This
-    return false;                                                       //will not clear the data buffer, because the system is still trying to fill it.
-  }
+		s->write(0x7E);                                                 //The read data function will return true if the data request is successful.
+		s->write((byte)0x00);
+		s->write(0x03);                                                 //This is the actual command
+		s->write((byte)0x00);
+		s->write(0xFC);
+		s->write(0x7E);
 
-    for(unsigned short j = 0; j<5; j++){                                //This will populate the system information array with the data returned by the                  
-        systemInfo[j] = s->read();                                      //by the system about the request. This is not the actual data, but will provide
-        if (j != 0) checksum += systemInfo[j];                          //information about the data. The information is also added to the checksum.
-    }
+		if (! s->available()) return false;                             //If the given serial connection is not available, the data request will fail.
 
-   if (systemInfo[3] != (byte)0x00){                                    //If the system indicates a malfunction of any kind, the data request will fail.
-     for (unsigned short j = 0; j<60; j++) data = s->read();            //Any data that populates the main array will be thrown out to prevent future corruption.
-     return false;
-   }
+		if (s->peek() != 0x7E){                                         //If the sent start byte is not as expected, the data request will fail.
+		 for (unsigned short j = 0; j<60; j++) data = s->read();        //The data buffer will be wiped to ensure the next data pull isn't corrupt.
+		 return false;
+		}
 
-	byte stuffByte = 0;
-	for(unsigned short j = 3; j < 40; j+=4){      					 //This nested loop will read the bytes and convert to MSB
-		for(unsigned short i = 0; i < 4; i++){
-			unsigned short x = j - i;
-			buffers[x] = s->read();
-			
-			if (buffers[x] == 0x7D) {                                 //This hex indicates that byte stuffing has occurred. The
-				stuffByte = s->read();                                          //series of if statements will determine the original value
-				if (stuffByte == 0x5E) buffers[x] = 0x7E;				//based on the following hex and replace the data.
-				if (stuffByte == 0x5D) buffers[x] = 0x7D;
-				if (stuffByte == 0x31) buffers[x] = 0x11;
-				if (stuffByte == 0x33) buffers[x] = 0x13;
+		if (s->available() < 47){                                       //If there are not enough data bytes available, the data request will fail. This
+		return false;                                                   //will not clear the data buffer, because the system is still trying to fill it.
+		}
+
+		for(unsigned short j = 0; j<5; j++){                            //This will populate the system information array with the data returned by the                  
+			systemInfo[j] = s->read();                                  //by the system about the request. This is not the actual data, but will provide
+			if (j != 0) checksum += systemInfo[j];                      //information about the data. The information is also added to the checksum.
+	
+
+		if (systemInfo[3] != (byte)0x00){                               //If the system indicates a malfunction of any kind, the data request will fail.
+		 for (unsigned short j = 0; j<60; j++) data = s->read();        //Any data that populates the main array will be thrown out to prevent future corruption.
+		 return false;
+		}
+
+		byte stuffByte = 0;
+		for(unsigned short j = 3; j < 40; j+=4){      					//This nested loop will read the bytes and convert to MSB
+			for(unsigned short i = 0; i < 4; i++){
+				unsigned short x = j - i;
+				buffers[x] = s->read();
+				
+				if (buffers[x] == 0x7D) {                               //This hex indicates that byte stuffing has occurred. The
+					stuffByte = s->read();                              //series of if statements will determine the original value
+					if (stuffByte == 0x5E) buffers[x] = 0x7E;			//based on the following hex and replace the data.
+					if (stuffByte == 0x5D) buffers[x] = 0x7D;
+					if (stuffByte == 0x31) buffers[x] = 0x11;
+					if (stuffByte == 0x33) buffers[x] = 0x13;
+				}
+				checksum += buffers[x];                                 //The data is added to the checksum.
 			}
-			checksum += buffers[x];                                     //The data is added to the checksum.
+		}
+
+		SPSChecksum = s->read();                                        //The provided checksum byte is read.
+		data = s->read();                                               //The end byte of the data is read.
+
+		if (data != 0x7E){                                              //If the end byte is bad, the data request will fail.
+		   for (unsigned short j = 0; j<60; j++) data = s->read();      //At this point, there likely isn't data to throw out. However,
+		   data = 0;                                                    //The removal is completed as a redundant measure to prevent corruption.
+		   return false;
+		}
+
+		checksum = checksum & 0xFF;                                     //The local checksum is calculated here. The LSB is taken by the first line.
+		checksum = ~checksum;                                           //The bit is inverted by the second line.
+
+		if (checksum != SPSChecksum){                                   //If the checksums are not equal, the data request will fail.  
+		  for (unsigned short j = 0; j<60; j++) data = s->read();       //Just to be certain, any remaining data is thrown out to prevent corruption.
+		  return false;
+		}
+  
+	} else {															//If the SPS is configured in I2C mode
+		if(dataReady()){												//Check if data is available to pull
+			SPSWire->beginTransmission(SPS_ADDRESS);
+			SPSWire->write(0x0202);										//Set Pointer
+			SPSWire->endTransmission(I2C_NOSTOP);						//request read
+			SPSWire->sendRequest(SPS_ADDRESS,60,I2C_STOP);				//Fill the buffer
+			SPSWire->finish();											//Wait for the buffer to fill
+			
+			if(SPSWire->available() != 60) return false;				//If the buffer does not fill, the data read failed.
+			
+			unsigned short i = 0;
+			
+			while(SPSWire->available()){								//Clear the buffer
+				uint8_t data[3];
+				
+				for (uint8_t j = 0; j < 3; j++){						//read three bytes
+					data[j] = SPSWire->readByte();
+				}
+				
+				if (CalcCrc(data) != data[2]) return false;				//if the bytes fail the checksum, the data read failed.
+				buffers[i++] = data[0];									//Otherwise, add the data to the buffer
+				buffers[i++] = data[1];
+			}		
+		}else return false;												//If the data is not available to pull, the data read failed.
+	}  
+	
+	memcpy((void *)&SPSdata, (void *)buffers, 40);						//Copy the data to the struct
+	return true;                   
+}
+
+bool SPS::dataReady(){													//Check if the SPS is ready to send measurement data
+	SPSWire->beginTransmission(SPS_ADDRESS);
+	SPSWire->write(0x0202);												//Set Pointer
+	SPSWire->endTransmission(I2C_NOSTOP);								//request read
+	SPSWire->sendRequest(SPS_ADDRESS,3,I2C_STOP);
+	SPSWire->finish();													//Wait to finish
+	
+	uint8_t data[3];
+	uint8_t i = 0;
+	
+	while (SPSWire->available()){										//read data
+		if (i < 3) data[i++] = SPSWire->readByte();
+		else return false;
+	}
+	
+	if((CalcCrc(data) == data[2])&&(data[0] == 0)&&(data[1] == 1)) return true;	//if the data is correctly transmitted and indicates data is ready, return true
+	
+	return false;
+}
+
+uint8_t SPS::CalcCrc(uint8_t data[2]) {									//Calculate the two byte checksum for I2C
+	uint8_t crc = 0xFF;
+	for(int i = 0; i < 2; i++) {
+		crc ^= data[i];
+		for(uint8_t bit = 8; bit > 0; --bit) {
+			if(crc & 0x80) {
+				crc = (crc << 1) ^ 0x31u;
+			} else {
+				crc = (crc << 1);
+			}
 		}
 	}
-
-    SPSChecksum = s->read();                                            //The provided checksum byte is read.
-    data = s->read();                                                   //The end byte of the data is read.
-
-    if (data != 0x7E){                                                  //If the end byte is bad, the data request will fail.
-       for (unsigned short j = 0; j<60; j++) data = s->read();          //At this point, there likely isn't data to throw out. However,
-       data = 0;                                                        //The removal is completed as a redundant measure to prevent corruption.
-       return false;
-    }
-
-    checksum = checksum & 0xFF;                                         //The local checksum is calculated here. The LSB is taken by the first line.
-    checksum = ~checksum;                                               //The bit is inverted by the second line.
-
-    if (checksum != SPSChecksum){                                       //If the checksums are not equal, the data request will fail.  
-      for (unsigned short j = 0; j<60; j++) data = s->read();           //Just to be certain, any remaining data is thrown out to prevent corruption.
-      return false;
-    }
-   
-  memcpy((void *)&SPSdata, (void *)buffers, 40);
-	
-  return true;                      
-}
-
-/*
-void SPS::getData(float dataPtr[], unsigned int arrayFill){				//Populate an array with the collected data
-	unsigned int i = 0;													//Below, an array is populated with particle data
-	float dataArray[10] = {m.MCF[0],m.MCF[1],m.MCF[2],m.MCF[3],n.NCF[0],n.NCF[1],n.NCF[2],n.NCF[3],n.NCF[4],a.ASF};
-	
-	while ((i<arrayFill)&&(i<10)){
-		dataPtr[i]=dataArray[i];										//particle data is passed to external array
-		
-		i++;
-	}
-}
-
-void SPS::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
-	unsigned int i = arrayStart;
-	float dataArray[10] = {m.MCF[0],m.MCF[1],m.MCF[2],m.MCF[3],n.NCF[0],n.NCF[1],n.NCF[2],n.NCF[3],n.NCF[4],a.ASF};
-	
-	while ((i<arrayFill)&&((i-arrayStart)<10)){
-		dataPtr[i]=dataArray[i-arrayStart];								//The process is the same as above, but you can pass data later into the input array
-		
-		i++;
-	}
-}*/
-
-bool SPS::altClean(float altitude, float cleanAlt){
-	if ((!altCleaned)&&(altitude > cleanAlt)){
-		clean();
-		altCleaned = true;
-		return true;
-	}
-	return false;
+	return crc;
 }
 	
 
@@ -624,9 +663,9 @@ void R1::powerOn(){														//system activation
 	  loopy++;
 	  
 	  if (loopy > 20){													//If 20 attempts to communicate fail, then turn off and back on
-		digitalWrite(CS, HIGH);                                          
-		SPI.endTransaction();
-		delay(2000);
+		digitalWrite(CS, HIGH);                                         //The power on and off for this system takes extra time, due to the sensitivity of SPI. 
+		SPI.endTransaction();											//With these commands, it is critical to connect. Later, when reading data, missing a hit
+		delay(2000);													//can be recovered later.
 		loopy = 0;
 		SPI.beginTransaction(SPISettings(R1_SPEED, MSBFIRST, SPI_MODE1));
 		digitalWrite(CS,LOW);
@@ -658,7 +697,7 @@ void R1::powerOff(){													//This is the power down sequence
 	  delay(10);
 	  loopy++;
 	  
-	  if (loopy > 20){
+	  if (loopy > 20){													//Same loop set as above
 		digitalWrite(CS, HIGH);                                          
 		SPI.endTransaction();
 		delay(2000);
@@ -670,9 +709,6 @@ void R1::powerOff(){													//This is the power down sequence
   } while ((inData[0] != 0xF3)||(bail <= 5));
 
   inData[1] = SPI.transfer(0x00);										//Control bytes
-//  delay(10);
-//  inData[2] = SPI.transfer(0x00);
-//  delay (10);
 
   digitalWrite(CS, HIGH);                                          
   SPI.endTransaction();
@@ -682,19 +718,13 @@ void R1::powerOff(){													//This is the power down sequence
   }
 }
 
-//void R1::initOPC(char t){
 void R1::initOPC(){
 	OPC::initOPC();														//Calls original init
 
 	SPI.begin();        											 	//Intialize SPI in Arduino
 	digitalWrite(CS,HIGH);												//Pull the pin up so there is no data leakage
 	delay(1000);
-//	if (t == 'p')
-//	{
-//		powerOnPump();
-//	} else {
-	powerOn();	
-//	}														
+	powerOn();														
 }
 
 String R1::CSVHeader(){													//Returns a data header in CSV formate
@@ -708,7 +738,7 @@ String R1::CSVHeader(){													//Returns a data header in CSV formate
 String R1::logUpdate(){													//If the log is successful, each bin will be logged.
 	unsigned int lastLog;
 	String dataLogLocal = String(nTot);
-	if (readData()){
+	if (readData()){													//If the data is read, create the data string
 	   goodLog = true;                                                  
        goodLogAge = millis();
        badLog = 0;
@@ -733,7 +763,7 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 		dataLogLocal += "," + String(localData.pm2_5);   
 		dataLogLocal += "," + String(localData.pm10);   
 		
-	} else {
+	} else {															//if the data cannot be read, bad log situation
 		badLog ++;
 		if (badLog >= 5) goodLog = false;								//Good log situation the same as in the Plantower code
 		lastLog = millis() - goodLogAge;
@@ -751,7 +781,7 @@ String R1::logUpdate(){													//If the log is successful, each bin will be
 	 return dataLogLocal;
  }
  
-String R1::logReadout(String name){
+String R1::logReadout(String name){										//Same as log update, but with a clean readout
 	unsigned int lastLog;
 	String dataLogLocal = String(nTot);
 	
@@ -789,12 +819,12 @@ String R1::logReadout(String name){
 		Serial.print("Last log time: ");
 		Serial.println(String(lastLog));
 		Serial.println();
-		Serial.print("Bins 1: ");
 		for (unsigned short i = 0; i < 16; i++){
-			Serial.print("," + String(localData.bins[i]));
+			Serial.print(("Bin " + String(i) + ": "));
+			Serial.println("," + String(localData.bins[i]));
 		}
 		Serial.println();
-		//FINISH WITH BIN TIMES
+		Serial.println("=======================");
 		
 	} else {
 		badLog ++;
@@ -838,21 +868,21 @@ bool R1::readData(){													//Data reading system
 	
 	digitalWrite(CS,LOW);
 
-		while (!success && (bail < 25)){ 
+		while (!success && (bail < 25)){ 								//Make 25 attempts to make contact as fast as possible
 			byte1 = byte2;
 			delay(10);
 			byte2 = SPI.transfer(0x30);
 			bail++;
-			success = ((byte1 == 0x31)&&(byte2 == 0xF3));
+			success = ((byte1 == 0x31)&&(byte2 == 0xF3));				//The busy and then active byte indicates success
 		}
   
-		if (!success) {
+		if (!success) {													//If connection fails, return a read failure.
 			digitalWrite(CS, HIGH);
 			SPI.endTransaction(); 
 			return false;
 		}
 
-			for (int i = 0; i<64; i++){
+			for (int i = 0; i<64; i++){									//Pull the data from the system
 				delayMicroseconds(10);
 				transmitData[i] = SPI.transfer(0x00);
 			}
@@ -860,12 +890,12 @@ bool R1::readData(){													//Data reading system
 			digitalWrite(CS, HIGH); 	 
 			SPI.endTransaction();
 
-			memcpy(&localData, &transmitData, 50);						//MEMCPY STILL WONT FULLY WORK????
+			memcpy(&localData, &transmitData, 50);						//Memcpy didn't like the last chunk of bytes for some reason
 	
-			localData.humid = (localData.humid/(pow(2,16)-1.0))*100;
+			localData.humid = (localData.humid/(pow(2,16)-1.0))*100;	//Update the humidity and temperature data with the calculated values
 			localData.temp = -45 + 175*(localData.temp/(pow(2,16)-1.0));
 	
-			union pmData{
+			union pmData{												//The last bytes would not copy, so this cludge makes the system work.
 				byte inputs[4];
 				float outputs;
 			}pmInfo[3];
@@ -880,7 +910,7 @@ bool R1::readData(){													//Data reading system
 			 localData.pm10 = pmInfo[2].outputs;
 			 
 			 localData.checksum = bytes2int(transmitData[62],transmitData[63]);
-		 	 return (localData.checksum == CalcCRC(transmitData, 62));
+		 	 return (localData.checksum == CalcCRC(transmitData, 62));	//Return the checksum result
 }
 
 unsigned int R1::CalcCRC(unsigned char data[], unsigned char nbrOfBytes) {
@@ -902,30 +932,10 @@ unsigned int R1::CalcCRC(unsigned char data[], unsigned char nbrOfBytes) {
     }
     return crc; 
 }
-																		//I have not set this up yet
-/*void R1::getData(float dataPtr[], unsigned int arrayFill){			//This fills an array with the data instead of using CSV format
-	unsigned int i = 0;
-	
-	while ((i<arrayFill)&&(i<27)){
-		dataPtr[i]=com[i];
-		
-		i++;
-	}
-}
-
-void R1::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
-	unsigned int i = arrayStart;										//This allows you to fill with the latter parts of the data
-	
-	while ((i<arrayFill)&&((i-arrayStart)<27)){							//Data cannot fill past the size of the array or the total amount of potential data
-		dataPtr[i]=com[i-arrayStart];
-		
-		i++;
-	}
-}*/
 
 
 
-//////////HPM//////////
+//////////HPM//////////													//The HPM is no longer supported.
 
 
 
@@ -1116,28 +1126,6 @@ bool HPM::readData(){													//This function will read the data
    delete [] inputArray;
    return true;
   }	
-}
-
-void HPM::getData(float dataPtr[], unsigned int arrayFill){				//Data is saved directly into an array
-	unsigned int i = 0;
-	uint32_t dataArray[4] = {localData.PM1_0,localData.PM2_5,localData.PM4_0,localData.PM10_0};
-	
-	while ((i<arrayFill)&&(i<4)){
-		dataPtr[i]=dataArray[i];
-		
-		i++;
-	}	
-}			
-
-void HPM::getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart){
-	unsigned int i = arrayStart;										//Data is still saved into an array, but the starting point can be chosen.
-	uint32_t dataArray[4] = {localData.PM1_0,localData.PM2_5,localData.PM4_0,localData.PM10_0};
-	
-	while ((i<arrayFill)&&((i-arrayStart)<4)){
-		dataPtr[i]=dataArray[i-arrayStart];
-		
-		i++;
-	}	
 }	
 
 
@@ -1151,10 +1139,10 @@ N3::N3(uint8_t slave) : OPC() { 										//Constructor
 	pinMode(CS,OUTPUT);
 }	
 
-bool N3::initCommand(byte command){
-  byte byte1 = 0;
-  byte byte2 = 0; 
-  unsigned short bail = 0;
+bool N3::initCommand(byte command){										//starting command system. This is the internal guts as a condensed version of the 
+  byte byte1 = 0;														//R1 protocol. This system takes a long period of time, under the theory that once
+  byte byte2 = 0; 														//the command connection is established, the system will be able to successfully connect
+  unsigned short bail = 0;												//regularly.
   unsigned short superBail = 0;
   bool success = false;
   
@@ -1162,7 +1150,7 @@ bool N3::initCommand(byte command){
   SPI.beginTransaction(SPISettings(N3_SPEED, MSBFIRST, SPI_MODE1));
   delay(10);
   
-  while (!success && (superBail < 20)){
+  while (!success && (superBail < 20)){									//Check for success or bail circumstances
 	  delay(1);
 	  byte1 = byte2;
 	  byte2 = SPI.transfer(0x03);
@@ -1176,13 +1164,13 @@ bool N3::initCommand(byte command){
 		digitalWrite(CS, HIGH); 		
 		SPI.endTransaction(); 
 		delay(3000);
-		digitalWrite(CS,LOW);													//Open data translation
+		digitalWrite(CS,LOW);											//Open data translation
 		SPI.beginTransaction(SPISettings(N3_SPEED, MSBFIRST, SPI_MODE1));
 		delay(10);
 	}
   }
   
-  if (success) {
+  if (success) {														//If the system is able to connect, indicate success
 	  	byte2 = SPI.transfer(command);
 		SPI.endTransaction(); 
 		digitalWrite(CS, HIGH); 
@@ -1196,7 +1184,7 @@ bool N3::initCommand(byte command){
 
 
 void N3::laserOn(){														//laser on
-	if(initCommand(0x07)) return;
+	if(initCommand(0x07)) return;										//The system has a built in redundant attempt for each general command.
 		delay(20000);
 		initCommand(0x07);
 }
@@ -1219,7 +1207,7 @@ void N3::fanOff(){														//fan off
 	(initCommand(0x02));
 }
 
-void N3::powerOn(){
+void N3::powerOn(){														//This pulls fan and laser commands together to mirror other systems
 	delay(1000);
 	fanOn();
 	delay(500);
@@ -1227,7 +1215,7 @@ void N3::powerOn(){
 	delay(1000);
 }
 
-void N3::powerOnPump(){
+void N3::powerOnPump(){													//This system only turns on the laser for pump use
 	delay(1000);
 	fanOff();
 	delay(50);
@@ -1248,11 +1236,11 @@ void N3::initOPC(char t){
 	SPI.begin();        											 	//Intialize SPI in Arduino
 	digitalWrite(CS,HIGH);												//Pull the pin up so there is no data leakage
 	delay(2500);
-	if (t == 'p') powerOnPump();
+	if (t == 'p') powerOnPump();										//if the correct trigger is passed, the system will init in pump mode
 	else powerOn();												
 }
 
-String N3::CSVHeader(){
+String N3::CSVHeader(){													//Header for log update								
 	String header = "hits,lastLog,Bin0,Bin1,Bin2,Bin3,Bin4,Bin5,Bin6,Bin7,Bin8,Bin9,";
 	header += "Bin10,Bin11,Bin12,Bin13,Bin14,Bin15,Bin16,Bin17,Bin18,Bin19,";
 	header += "Bin20,Bin21,Bin22,Bin23,Bin1 Time,Bin3 Time,Bin5 Time,Bin7 Time,";
@@ -1260,10 +1248,10 @@ String N3::CSVHeader(){
 	return header;
 }
 
-String N3::logUpdate(){
+String N3::logUpdate(){													//CSV creator and system updator
 	unsigned int lastLog;
 	String dataLogLocal = String(nTot);
-	if (readData()){
+	if (readData()){													//If the data can be read, shift the data from the struct into the CSV.
 	   goodLog = true;                                                  
        goodLogAge = millis();
        badLog = 0;
@@ -1301,9 +1289,9 @@ String N3::logUpdate(){
 	 return dataLogLocal;
 }
 
-String N3::logReadout(String name){return "";}
+String N3::logReadout(String name){logUpdate();}						//Log Readout is not implemented yet!
 
-bool N3::readData(){ 
+bool N3::readData(){ 													//Internal data reading function
 	byte transmitData[86] = {0};
 	
 	byte byte1 = 0x00;
@@ -1315,21 +1303,21 @@ bool N3::readData(){
 	
 	digitalWrite(CS,LOW);
 
-		while (!success && (bail < 25)){ 
+		while (!success && (bail < 25)){ 								//Attempt to make a connection
 			byte1 = byte2;
 			delay(10);
 			byte2 = SPI.transfer(0x30);
 			bail++;
-			success = ((byte1 == 0x31)&&(byte2 == 0xF3));
+			success = ((byte1 == 0x31)&&(byte2 == 0xF3));				//Success if the busy and active bytes are recieved
 		}
   
-		if (!success) {
+		if (!success) {													//If the system does not succeed, return a failure
 			digitalWrite(CS, HIGH);
 			SPI.endTransaction(); 
 			return false;
 		}
 			Serial.println();
-			for (int i = 0; i<86; i++){
+			for (int i = 0; i<86; i++){									//Read all of the bytes from the system
 				delayMicroseconds(10);
 				transmitData[i] = SPI.transfer(0x00);
 				Serial.print(transmitData[i],HEX);
@@ -1339,12 +1327,12 @@ bool N3::readData(){
 			digitalWrite(CS, HIGH); 	 
 			SPI.endTransaction();
 	
-			memcpy(&localData, &transmitData, 86);	
+			memcpy(&localData, &transmitData, 86);						//Copy the data to the struct
 	
-			localData.humid = (localData.humid/(pow(2,16)-1.0))*100;
+			localData.humid = (localData.humid/(pow(2,16)-1.0))*100;	//Update the humidity and temperature data with the calculated data
 			localData.temp = -45 + 175*(localData.temp/(pow(2,16)-1.0));
 	
-			return (localData.checkSum == CalcCRC(transmitData, 84));
+			return (localData.checkSum == CalcCRC(transmitData, 84));	//return the checksum results
 }
 	
 unsigned int N3::CalcCRC(unsigned char data[], unsigned char nbrOfBytes){
@@ -1366,17 +1354,3 @@ unsigned int N3::CalcCRC(unsigned char data[], unsigned char nbrOfBytes){
     }
     return crc; 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

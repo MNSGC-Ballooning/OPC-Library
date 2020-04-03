@@ -28,6 +28,7 @@ record new data every 1 seconds.
 
 #include <arduino.h>
 #include <SPI.h>
+#include <i2c_t3.h>
 #include <Stream.h>
 #define R1_SPEED 300000
 #define N3_SPEED 300000
@@ -53,8 +54,6 @@ class OPC																//Parent OPC class
 	String logUpdate();
 	String logReadout(String name);													
 	bool readData();
-	void getData(float dataPtr[], unsigned int arrayFill);
-	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);
 	void powerOn();
 	void powerOff();
 	void setReset(unsigned long resetTimer);							//Manually set the bad log reset timer
@@ -65,6 +64,10 @@ class OPC																//Parent OPC class
 class Plantower: public OPC
 {                              
 	private:
+	unsigned int logRate;												//System log rate
+	void command(uint8_t CMD, uint8_t MODE);							//Command base
+	
+	public:
 	struct PMS5003data {												//Struct that holds Plantower data
 		uint16_t framelen;
 		uint16_t pm10_standard, pm25_standard, pm100_standard;
@@ -73,11 +76,7 @@ class Plantower: public OPC
 		uint16_t unused;
 		uint16_t checksum;
 	} PMSdata;
-	unsigned int logRate;												//System log rate
 	
-	void command(uint8_t CMD, uint8_t MODE);							//Command base
-	
-	public:
 	Plantower(Stream* ser, unsigned int logRate);						//Plantower constructor
 	void powerOn();
 	void powerOff();
@@ -88,8 +87,6 @@ class Plantower: public OPC
 	String logUpdate();
 	String logReadout(String name);
 	bool readData();
-	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
-	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);
 };
 
 
@@ -97,29 +94,33 @@ class Plantower: public OPC
 class SPS: public OPC
 {
 	private:
-	bool altCleaned = false;
-
-	struct SPS30data {
+	bool altCleaned = false;											//The boolean for altitude based fan clean operation
+	bool iicSystem = false;												//Indication of i2c or serial system 
+	i2c_t3 *SPSWire;													//Local wire bus
+	i2c_pins SPSpins;													//Local wire pins
+	uint8_t	CalcCrc(uint8_t data[2]);									//SPS wire checksum calculation
+	bool dataReady();													//data indicator
+	
+	
+	public:
+	struct SPS30data {													//struct for SPS30 data
 		float mas[4];
 		float nums[5];
 		float aver;		
-
 	}SPSdata;
 
-	public:
-	SPS(Stream* ser);													//Parent Constructor
-	void powerOn();														//Special commands for SPS
+	SPS(i2c_t3 wireBus, i2c_pins pins);									//I2C Constructor
+	SPS(Stream* ser);													//Serial Constructor
+	void powerOn();														//System commands for SPS
 	void powerOff();
 	void clean();
 	void initOPC();														//Overrides of OPC data functions and initialization
-	String CSVHeader();
-	String logUpdate();
-	String logReadout(String name);
-	bool readData();
-//	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
-//	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);
-	bool altClean(float altitude, float cleanAlt);						//Set a function to flush the sensor at some height to clear the particles
+	String CSVHeader();													//Returns a CSV header for log update
+	String logUpdate();													//Returns the CSV string of SPS data
+	String logReadout(String name);										//Log update, but with a nice serial print
+	bool readData();													//data reader- generally controlled internally
 };
+
 
 
 
@@ -129,7 +130,7 @@ class R1: public OPC {													//The R1 runs on SPI Communication
 	uint16_t data[25];													//Data arrays
 	unsigned int CalcCRC(unsigned char data[], unsigned char nbrOfBytes);//Checksum calculator
 	
-	struct R1data{
+	struct R1data{														//R1 data struct
 		uint16_t bins[16];
 		uint8_t bin1time, bin2time, bin3time, bin4time;
 		float sampleFlowRate; 
@@ -143,29 +144,26 @@ class R1: public OPC {													//The R1 runs on SPI Communication
 	public:
 	R1(uint8_t slave);													//Alphasense constructor
 	void powerOn();														//Power on will activate the fan, laser, and data communication
-//	void powerOnPump();													//Power on for use with an external pump
 	void powerOff();													//Power off will deactivate these same things
 	void initOPC();														//Initializes the OPC
 	String CSVHeader();													//Overrrides the OPC data functions
 	String logUpdate();
 	String logReadout(String name);
-	bool readData();
-//	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
-//	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);													
+	bool readData();												
 };
 
 
 
 class HPM: public OPC{
 	private:
-	struct HPMdata{
-		uint16_t PM1_0, PM2_5, PM4_0, PM10_0, checksum, checksumR;		//Data structure
-	}localData;
 	bool autoSend;														//Auto send data state
-	
 	bool command(byte cmd, byte chk);									//Command base
 	
 	public:	
+	struct HPMdata{
+		uint16_t PM1_0, PM2_5, PM4_0, PM10_0, checksum, checksumR;		//Data structure
+	}localData;
+	
 	HPM(Stream* ser);												
 	void powerOn();														//Power on will start the measurement system
 	void powerOff();													//Power off will stop measurements
@@ -175,8 +173,6 @@ class HPM: public OPC{
 	String CSVHeader();													//Header in CSV format
 	String logUpdate();													//Update data in CSV string
 	bool readData();													//Read incoming data
-	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
-	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);	
 };
 
 class N3: public OPC {													//The R1 runs on SPI Communication
@@ -185,7 +181,8 @@ class N3: public OPC {													//The R1 runs on SPI Communication
 	bool initCommand(byte command);
 	unsigned int CalcCRC(unsigned char data[], unsigned char nbrOfBytes);//Checksum calculator
 	
-	struct N3data{
+	public:
+	struct N3data{														//N3 Public data struct
 		uint16_t bins[24];
 		uint8_t bin1time, bin2time, bin3time, bin4time;
 		uint16_t samplePeriod, sampleFlowRate, temp, humid;
@@ -193,7 +190,6 @@ class N3: public OPC {													//The R1 runs on SPI Communication
 		uint16_t rejectCountGlitch, rejectCountLong, rejectCountRatio, rejectCountRange, fanRevCount, laserStatus, checkSum;
 	} localData;
 	
-	public:
 	N3(uint8_t slave);													//Alphasense constructor
 	void laserOn();														//Laser on command
 	void fanOn();														//Fan on command
@@ -206,9 +202,7 @@ class N3: public OPC {													//The R1 runs on SPI Communication
 	String CSVHeader();													//Overrrides the OPC data functions
 	String logUpdate();	
 	String logReadout(String name);												
-	bool readData();
-//	void getData(float dataPtr[], unsigned int arrayFill);				//Get data will pass the data into an array via a pointer
-//	void getData(float dataPtr[], unsigned int arrayFill, unsigned int arrayStart);													
+	bool readData();												
 };
 
 #endif
